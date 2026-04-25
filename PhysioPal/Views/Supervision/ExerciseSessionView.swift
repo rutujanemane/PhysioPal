@@ -144,6 +144,7 @@ struct ExerciseSessionView: View {
             }
         }
         .onReceive(viewModel.$routineExercises) { _ in
+            guard !viewModel.isSessionComplete else { return }
             if viewModel.shouldEscalate() {
                 viewModel.markEscalationHandled()
                 onEscalate()
