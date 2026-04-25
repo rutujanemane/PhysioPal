@@ -255,6 +255,7 @@
 				DEVELOPMENT_TEAM = HKY6KS9WBS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "PhysioPal uses your camera to watch your exercise form and give you real-time guidance. Your video never leaves this device.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "PhysioPal reads your sleep, heart rate, steps, and energy levels to personalize your exercise routine and share readiness insights with your physiotherapist.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -290,6 +291,7 @@
 				DEVELOPMENT_TEAM = HKY6KS9WBS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "PhysioPal uses your camera to watch your exercise form and give you real-time guidance. Your video never leaves this device.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "PhysioPal reads your sleep, heart rate, steps, and energy levels to personalize your exercise routine and share readiness insights with your physiotherapist.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
