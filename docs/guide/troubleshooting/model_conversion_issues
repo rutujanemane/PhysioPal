@@ -1,0 +1,76 @@
+Model Conversion Issues
+Troubleshoot model conversion and upload issues with ZETIC Melange.
+
+This page covers issues you may encounter when uploading and converting models with ZETIC Melange.
+
+Unsupported Operations
+Symptoms:
+
+Model upload fails on the Melange Dashboard
+Dashboard reports "Unsupported operation" or "Conversion failed"
+Solutions:
+
+Simplify ONNX Models
+Use onnx-simplifier to reduce complex subgraphs:
+
+
+pip install onnxsim
+onnxsim input_model.onnx output_model.onnx
+Check ONNX Opset Version
+Export with a commonly supported opset (opset 12-13 recommended):
+
+
+# PyTorch to ONNX
+torch.onnx.export(model, input, "model.onnx", opset_version=13)
+
+# TFLite to ONNX
+python -m tf2onnx.convert --tflite model.tflite --output model.onnx --opset 13
+Avoid Dynamic Shapes
+Export with static input dimensions:
+
+
+# YOLO example
+model.export(format="onnx", dynamic=False, imgsz=640)
+For the most reliable conversion, export your model to ONNX format with opset=13, simplification enabled, and static shapes.
+
+Input Shape Mismatches
+Symptom: Model compiles but produces incorrect results or crashes at inference time.
+
+Cause: The input shapes provided during upload do not match the shapes used during inference.
+
+Solutions:
+
+Use Netron to inspect your model's expected input shapes.
+Ensure the .npy input files match the model's expected dimensions exactly.
+Verify input data types (typically Float32).
+Input Order Errors
+Symptom: Model produces garbage results despite correct shapes.
+
+Cause: Inputs are provided in the wrong order.
+
+Solution: Verify input order using Netron:
+
+Open your model in Netron.
+Check the top-most input node: this is Index 0.
+The next input node is Index 1, and so on.
+Ensure the inputs you upload on the Dashboard (and your run() inputs in the app) follow this order.
+Input order must be consistent between upload (on the Melange Dashboard) and inference (run() calls). Swapping inputs will produce incorrect results.
+
+Format-Specific Issues
+PyTorch Exported Program (.pt2)
+Requires PyTorch 2.9+
+Some custom operators may not be supported by torch.export
+Try tracing with simpler inputs if export fails
+ONNX (.onnx)
+Use onnxsim to simplify before upload
+Check for unsupported custom operators
+Verify opset version compatibility (12-13 recommended)
+Compilation Status: Failed
+Symptom: Model shows "Failed" status on the Dashboard.
+
+Solutions:
+
+Check the error message on the Dashboard for specific details.
+Verify your model file is not corrupted.
+Try re-exporting the model with a simpler configuration.
+Contact contact@zetic.ai with your model file for support.

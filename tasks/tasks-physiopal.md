@@ -138,6 +138,8 @@ Update the file after completing each sub-task, not just after completing an ent
   - [x] 2.6 Implement `assessReadiness()` — call requestAuthorization, then fetch sleep and energy concurrently with `async let`, construct HealthReadiness, fall back to `.noHealthData` on error
   - [x] 2.7 Write warm, encouraging readiness explanation strings for each level — low ("let's take it easy"), moderate ("I've made a few adjustments"), normal ("you're looking well-rested")
 
+  
+
 - [x] 3.0 Context Engine — Health recommendation UI (Doctor's Note screen)
   - [x] 3.1 Create `ContextEngineViewModel` — `@Published` readiness, routine, isLoading, hasCompleted; `loadHealthAndBuildRoutine()` calls assessReadiness and builds routine
   - [x] 3.2 Implement routine builder — iterate exercise library, swap to easier variants and reduce reps when readiness is low/moderate, return ExerciseRoutine

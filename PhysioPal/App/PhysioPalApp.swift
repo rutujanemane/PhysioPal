@@ -11,7 +11,7 @@ struct PhysioPalApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                HomeView()
+                RoleSelectionView()
             }
             .tint(AppColors.primary)
         }

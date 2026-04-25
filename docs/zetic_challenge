@@ -1,0 +1,50 @@
+ZETIC: Build AI Apps That Run On-Device
+(1st Place: $1000, 2nd Place: $600, 3rd Place: $400, All Winners: 3 Months of Melange Pro+ subscription and interview opportunities with ZETIC)
+
+Overview
+ZETIC builds an infrastructure for running AI on the edge devices which is fast, efficient, and private.
+Melange is our dev tool that enables developers and builders to select, benchmark, and deploy AI models directly on the end-user’s smartphone within minutes, across CPU, GPU, and NPU.
+In this challenge, you will build an AI-powered application using Melange (https://melange.zetic.ai/) to run AI models locally on real devices.
+Your application must run its primary functionality on-device. Cloud inference may be used only for secondary tasks such as heavy computation or fallback.
+What We’re Looking For
+Strong submissions will:
+Run core functionality directly on-device
+Clearly separate on-device and cloud responsibilities
+Optimize latency, efficiency, and resource usage
+Deliver a working prototype with real-world usability
+Must have used Melange SDK
+What to Avoid
+Avoid the following:
+Cloud-heavy applications with minimal on-device usage
+Simple wrappers around APIs without system-level thinking
+Generic chatbots without meaningful functionality
+Example Project Ideas
+You can build applications across domains such as:
+Healthcare
+Education
+Productivity
+Accessibility
+Some example directions:
+On-device healthcare assistant that works offline with cloud fallback
+Real-time transcription and summarization with local processing
+Offline-first learning assistant for students
+Accessibility tools using on-device speech or vision models
+Smart assistant that runs core logic locally with optional cloud support
+Technical Direction
+You are encouraged to:
+Use on-device models for latency-sensitive or privacy-critical tasks
+Use cloud only for clearly secondary tasks such as heavy computation or fallback
+Design clear separation between on-device and cloud responsibilities
+Optimize for efficiency, responsiveness, and resource usage
+Focus on building applications that run effectively on real devices.
+Evaluation Criteria
+Submissions will be evaluated based on:
+Effective use of on-device inference with Melange SDK (primary functionality)
+Clarity in separating on-device and cloud responsibilities
+Performance, latency, and efficiency considerations
+Overall user experience and usability
+Resources
+Melange Platform: https://melange.zetic.ai/ 
+Documentation: https://docs.zetic.ai/ 
+Support: Discord - https://discord.com/invite/gqhDWfZbgU 
+

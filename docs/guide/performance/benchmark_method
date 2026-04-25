@@ -1,0 +1,52 @@
+Benchmark Methodology
+How ZETIC Melange benchmarks are measured across 200+ physical devices.
+
+Melange ensures optimal on-device performance through rigorous benchmarking on physical hardware. This page explains our methodology.
+
+Overview
+Unlike traditional approaches that rely on static rules or theoretical specifications, Melange performs on-target performance measurement to empirically determine the optimal model for every device.
+
+Device Farm
+We maintain a distributed device farm of over 200 physical devices spanning:
+
+Qualcomm Snapdragon
+MediaTek Dimensity
+Samsung Exynos
+Apple A-series and M-series chips
+Each device runs the exact OS version and driver configuration that real users encounter.
+
+What We Measure
+For each model and device combination, we capture:
+
+Metric	Description
+Inference Latency	Millisecond-precision end-to-end inference time
+Throughput	Frames per second (vision) or tokens per second (LLM)
+SNR (Signal-to-Noise Ratio)	Accuracy degradation compared to the original model
+Validation Workflow
+1. Provision Test Environment
+An isolated, on-device runtime environment is instantiated mirroring the target OS and hardware configuration.
+
+2. Distributed Workload Execution
+Compilation artifacts, model metadata, and test vectors are dispatched to the device farm. The model is executed on each device to capture real-world metrics.
+
+3. Telemetry Analysis and Winner Selection
+Performance data is aggregated to select the "Winning Model" for each device identifier. This determines which compiled binary variant: quantization level, backend, and optimization profile: performs best on each specific device.
+
+4. Automatic Distribution
+When a user installs your app, the Melange Runtime automatically fetches the winning model for their device. No developer configuration is needed.
+
+Why Physical Devices Matter
+Theoretical performance metrics often fail in practice due to:
+
+Driver fragmentation: Different GPU/NPU driver versions behave differently
+Thermal throttling: Sustained workloads cause performance degradation
+Memory constraints: Real-world memory pressure affects behavior
+OS-level scheduling: Background processes impact inference timing
+By measuring on physical devices, we capture all of these real-world factors.
+
+Advanced Telemetry (Premium)
+Profiling is executed for all users to guarantee optimal performance. Detailed profiling reports are available for Pro+ and Enterprise tier users.
+
+For enterprise customers, we provide detailed profiling reports broken down by model × runtime × quantization type × chipset × device, enabling granular performance analysis across your entire deployment target matrix.
+
+Please contact us for more information.

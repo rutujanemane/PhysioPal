@@ -33,6 +33,10 @@ struct AppFlowView: View {
                         // #region agent log
                         print("[AppFlowView][H6] transition exercise -> reward")
                         // #endregion
+                        SessionStore.shared.record(
+                            summary: summary,
+                            readiness: contextVM.readiness ?? .noHealthData
+                        )
                         withAnimation(.easeInOut(duration: AppAnimation.screenTransition)) {
                             currentStep = .reward(summary)
                         }

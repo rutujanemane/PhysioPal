@@ -1,0 +1,106 @@
+Enums and Constants
+Reference for all enums and constants in the Melange iOS SDK.
+
+This page reflects ZeticMLange iOS 1.6.0.
+
+This page documents the enums and configuration types most commonly used from the iOS SDK.
+
+ModelMode
+Controls the inference strategy for general, non-LLM models.
+
+
+import ZeticMLange
+Value	Description
+RUN_AUTO	Default. Balanced speed and accuracy.
+RUN_SPEED	Prioritizes lower latency.
+RUN_ACCURACY	Prioritizes higher precision.
+QuantType
+Quantization precision filter used during automatic target selection by ZeticMLangeModel(personalKey:name:modelMode:quantType:...). When set, only targets matching this precision are considered. Pass nil to disable precision-based filtering.
+
+Value	Description
+.FP32	Full-precision floating point.
+.FP16	Half-precision floating point.
+.INT	Integer-quantized targets. Only INT8 backends are currently supported.
+LLMModelMode
+Controls automatic target selection for ZeticMLangeLLMModel.
+
+Value	Description
+.RUN_AUTO	Default. Uses metadata-based selection to balance practical speed and quality.
+.RUN_SPEED	Prioritizes lower latency.
+.RUN_ACCURACY	Prioritizes higher score or lower loss.
+
+let model = try ZeticMLangeLLMModel(
+    personalKey: PERSONAL_KEY,
+    name: MODEL_NAME,
+    modelMode: .RUN_SPEED
+)
+LLMDataSetType
+Optional dataset hint for .RUN_ACCURACY.
+
+Value	Description
+.MMLU	Massive Multitask Language Understanding
+.TRUTHFULQA	Truthfulness and informativeness benchmark
+.CNN_DAILYMAIL	Summarization benchmark
+.GSM8K	Grade-school math reasoning benchmark
+
+let model = try ZeticMLangeLLMModel(
+    personalKey: PERSONAL_KEY,
+    name: MODEL_NAME,
+    modelMode: .RUN_ACCURACY,
+    dataSetType: .MMLU
+)
+LLMKVCacheCleanupPolicy
+Controls how the conversation KV cache is handled when it reaches capacity.
+
+Value	Description
+.CLEAN_UP_ON_FULL	Clears the conversation context when the KV cache is full. Default.
+.DO_NOT_CLEAN_UP	Keeps the context as-is. You must call cleanUp() before the next conversation.
+LLMInitOption
+Configures LLM runtime initialization.
+
+
+public struct LLMInitOption {
+    public let kvCacheCleanupPolicy: LLMKVCacheCleanupPolicy
+    public let nCtx: Int
+}
+Field	Type	Description
+kvCacheCleanupPolicy	LLMKVCacheCleanupPolicy	KV-cache cleanup behavior during generation.
+nCtx	Int	Requested context length.
+nCtx is not guaranteed to be applied exactly as provided. The runtime can adjust it internally depending on the model or backend.
+
+LLMTarget
+Manual runtime selection target for ZeticMLangeLLMModel.
+
+
+LLMTarget.LLAMA_CPP
+Value	Description
+.LLAMA_CPP	Use this value for explicit GGUF selection.
+LLMQuantType
+GGUF quantization types used with .LLAMA_CPP.
+
+Value
+.GGUF_QUANT_ORG
+.GGUF_QUANT_F16
+.GGUF_QUANT_BF16
+.GGUF_QUANT_Q8_0
+.GGUF_QUANT_Q6_K
+.GGUF_QUANT_Q4_K_M
+.GGUF_QUANT_Q3_K_M
+.GGUF_QUANT_Q2_K
+.GGUF_QUANT_NUM_TYPES
+APType
+Processor type used with explicit runtime selection.
+
+Device / runtime	Supported values
+Apple + .LLAMA_CPP	.CPU, .GPU
+Apple LLaMA.cpp does not support .NPU.
+
+ZeticMLangeCacheHandlingPolicy
+Managed artifact cache policy for downloaded model files.
+
+Value	Description
+.REMOVE_OVERLAPPING	Default. Removes overlapping cached aliases for the same model entry.
+.KEEP_EXISTING	Keeps older cached aliases and artifacts.
+Detailed semantics for ZeticMLangeCacheHandlingPolicy are currently TBD. See Cache Management.
+
+See Also

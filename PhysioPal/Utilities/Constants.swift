@@ -55,6 +55,7 @@ enum AppShadow {
 enum HealthThresholds {
     static let lowSleepHours: Double = 5.0
     static let lowEnergyKcal: Double = 50.0
+    static let elevatedHeartRate: Double = 85.0
     static let consecutiveFailuresForEscalation: Int = 3
 }
 
