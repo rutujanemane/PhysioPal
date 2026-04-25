@@ -1,10 +1,14 @@
 # PRD: PhysioPal — The Digital Physiotherapist
 
+> **Context:** This is a hackathon project for **LA Hacks 2026**. Two teammates are building it: **Puneet** (Context Engine + Escalation) and **Rutuja** (Supervision Engine + Rewards). The app is iOS only (SwiftUI, iPhone 12+). See `CLAUDE.md` for the full UI/UX design system and judging checklist. See `physiopal.md` for the project overview and current implementation state.
+
 ## 1. Introduction / Overview
 
 PhysioPal is a fully on-device iOS app that bridges the **"Supervision Gap"** in physical therapy. Patients prescribed exercises by their physiotherapist often perform them at home unsupervised, with incorrect form, risking further injury. PhysioPal solves this by combining **Apple Health data** for adaptive routine selection and **on-device pose estimation** for real-time form correction — all without sending any video data to the cloud.
 
 This is a **hackathon proof-of-concept** (1–2 day build) demonstrating the end-to-end flow: health-aware exercise adaptation, real-time supervision, gamified rewards, and escalation to a human physiotherapist.
+
+**Target audience:** Elderly patients (60–80+) doing physiotherapy at home. The UI is designed for large text, generous touch targets, simple linear navigation, and warm encouraging language. We are competing for the **Best UI/UX** prize.
 
 ---
 
@@ -129,3 +133,57 @@ Since this is a hackathon demo, success is measured by:
 3. **ZeticAI Melange SDK access**: Do we have the SDK and license ready for integration, or is there a setup step required?
 4. **Demo device**: Which specific iPhone model will be used for the live demo? (Affects Neural Engine performance tuning.)
 5. **Hardcoded PT number**: Whose phone number should the Twilio escalation call for the demo?
+
+---
+
+## 10. Implementation State
+
+### What's Already Built (Puneet)
+
+The following is implemented and functional in the `PhysioPal/` source directory:
+
+| Component | Files | Status |
+|-----------|-------|--------|
+| Shared models | `Models/Exercise.swift`, `ExerciseRoutine.swift`, `HealthReadiness.swift`, `PoseData.swift` | Done |
+| Design system | `Utilities/Constants.swift` — all colors, fonts, layout values, thresholds, animation configs | Done |
+| Angle calculator | `Utilities/AngleCalculator.swift` — computes joint angles from 3 CGPoints | Done |
+| HealthKit service | `Services/HealthKitManager.swift` — sleep + energy queries, readiness assessment | Done |
+| Context Engine VM | `ViewModels/ContextEngineViewModel.swift` — loads health data, builds adaptive routine | Done |
+| Doctor's Note UI | `Views/ContextEngine/DoctorsNoteCard.swift`, `HealthRecommendationView.swift` | Done |
+| Twilio service | `Services/TwilioService.swift` — REST API voice call to PT | Done |
+| Zoom service | `Services/ZoomService.swift` — opens Zoom app/web link | Done |
+| Escalation VM + UI | `ViewModels/EscalationViewModel.swift`, `Views/Escalation/EscalationView.swift` | Done |
+| Home screen | `Views/Home/HomeView.swift` — feature cards, privacy badge, begin session CTA | Done |
+| App navigation | `Views/AppFlowView.swift` — coordinates Health Check → Exercise → Reward/Escalation | Done |
+| App entry point | `App/PhysioPalApp.swift` — NavigationStack root | Done |
+| Config files | `Info.plist` (permissions), `PhysioPal.entitlements` (HealthKit) | Done |
+
+### What Needs to Be Built (Rutuja)
+
+| Component | Files to Create | Description |
+|-----------|----------------|-------------|
+| Camera + Pose | `Views/Supervision/CameraPreviewView.swift`, `Services/PoseEstimationService.swift` | AVCaptureSession + ZeticAI Melange SDK on-device pose estimation |
+| Exercise Evaluator | `Services/ExerciseEvaluator.swift` | Compare PoseFrame joint angles against Exercise.formRules, return FormEvaluation |
+| Supervision VM | `ViewModels/SupervisionViewModel.swift` | Process frames, count reps, track streaks, detect failures |
+| Supervision UI | `Views/Supervision/ExerciseSessionView.swift`, `PoseOverlayView.swift`, `FeedbackOverlayView.swift` | Camera feed (top 60%), skeleton overlay, feedback pills, rep counter |
+| Reward VM | `ViewModels/RewardViewModel.swift` | Session summary data, milestone detection |
+| Reward UI | `Views/Reward/RewardAnimationView.swift`, `ExerciseSummaryView.swift` | Alien hacker animation, summary card, milestone badges |
+
+### How Rutuja's Code Connects to Existing Code
+
+1. **Entry point:** `AppFlowView.swift` currently renders `ExerciseSessionPlaceholder` and `RewardPlaceholder`. Rutuja replaces these with her real views. The placeholder shows the exact callback signatures needed:
+   - `onComplete: (SessionSummary) -> Void` — call this when the exercise session finishes
+   - `onEscalate: () -> Void` — call this when `consecutiveFailures >= 3`
+
+2. **Shared models to use:**
+   - `Exercise` and `Exercise.FormRule` — contains per-exercise joint angle thresholds
+   - `ExerciseRoutine` and `RoutineExercise` — the routine built by ContextEngineViewModel, passed to the exercise session
+   - `PoseFrame` — fill this with landmark data from the pose SDK
+   - `SessionSummary` — construct this when exercise completes, pass to `onComplete`
+   - `FormEvaluation` and `FormViolation` — output of form checking
+
+3. **Utilities to use:**
+   - `AngleCalculator.angle(pointA:vertex:pointC:)` — computes angle between 3 points in degrees
+   - `Constants.swift` — all colors (`AppColors`), fonts (`AppFonts`), layout (`AppLayout`), thresholds (`HealthThresholds`), animation durations (`AppAnimation`)
+
+4. **Design system:** All UI must follow `CLAUDE.md` — warm teal/coral/gold palette, 18pt min text, 54pt touch targets, encouraging language (never "wrong"/"failed"), camera feed top 60% with skeleton overlay.
