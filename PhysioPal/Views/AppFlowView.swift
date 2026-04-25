@@ -25,6 +25,10 @@ struct AppFlowView: View {
                 ExerciseSessionPlaceholder(
                     routine: routine,
                     onComplete: { summary in
+                        SessionStore.shared.record(
+                            summary: summary,
+                            readiness: contextVM.readiness ?? .noHealthData
+                        )
                         withAnimation(.easeInOut(duration: AppAnimation.screenTransition)) {
                             currentStep = .reward(summary)
                         }

@@ -63,6 +63,26 @@ struct HealthRecommendationView: View {
                     )
                 }
 
+                if let hr = readiness.restingHeartRate {
+                    healthStatRow(
+                        icon: "heart.fill",
+                        label: "Resting heart rate",
+                        value: String(format: "%.0f BPM", hr),
+                        color: hr > HealthThresholds.elevatedHeartRate ? AppColors.secondary : AppColors.success
+                    )
+                }
+
+                if let steps = readiness.stepCount {
+                    let formatter = NumberFormatter()
+                    let _ = formatter.numberStyle = .decimal
+                    healthStatRow(
+                        icon: "figure.walk",
+                        label: "Steps today",
+                        value: formatter.string(from: NSNumber(value: Int(steps))) ?? "\(Int(steps))",
+                        color: steps < 2000 ? AppColors.secondary : AppColors.success
+                    )
+                }
+
                 Spacer().frame(height: 8)
 
                 startButton(routine: routine)
