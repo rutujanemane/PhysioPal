@@ -11,8 +11,16 @@ final class HealthKitManager {
         if let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
             types.insert(sleepType)
         }
-        if let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) {
-            types.insert(energyType)
+        let quantityTypes: [HKQuantityTypeIdentifier] = [
+            .activeEnergyBurned,
+            .heartRate,
+            .stepCount,
+            .heartRateVariabilitySDNN
+        ]
+        for id in quantityTypes {
+            if let type = HKObjectType.quantityType(forIdentifier: id) {
+                types.insert(type)
+            }
         }
         return types
     }()
@@ -25,6 +33,8 @@ final class HealthKitManager {
         guard isAvailable else { return }
         try await store.requestAuthorization(toShare: [], read: readTypes)
     }
+
+    // MARK: - Sleep
 
     func fetchSleepHours() async throws -> Double? {
         guard isAvailable else { return nil }
@@ -67,17 +77,80 @@ final class HealthKitManager {
         return totalSeconds / 3600.0
     }
 
+    // MARK: - Active Energy
+
     func fetchActiveEnergy() async throws -> Double? {
         guard isAvailable else { return nil }
+        return try await fetchCumulativeStat(for: .activeEnergyBurned, unit: .kilocalorie())
+    }
 
-        let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!
+    // MARK: - Steps
+
+    func fetchStepCount() async throws -> Double? {
+        guard isAvailable else { return nil }
+        return try await fetchCumulativeStat(for: .stepCount, unit: .count())
+    }
+
+    // MARK: - Heart Rate
+
+    func fetchRestingHeartRate() async throws -> Double? {
+        guard isAvailable else { return nil }
+        return try await fetchMostRecentSample(for: .heartRate, unit: HKUnit.count().unitDivided(by: .minute()))
+    }
+
+    // MARK: - HRV
+
+    func fetchHRV() async throws -> Double? {
+        guard isAvailable else { return nil }
+        return try await fetchMostRecentSample(for: .heartRateVariabilitySDNN, unit: .secondUnit(with: .milli))
+    }
+
+    // MARK: - Combined Assessment
+
+    func assessReadiness() async -> HealthReadiness {
+        #if targetEnvironment(simulator)
+        return HealthReadiness.simulatorMock
+        #else
+        do {
+            try await requestAuthorization()
+
+            async let sleepTask = fetchSleepHours()
+            async let energyTask = fetchActiveEnergy()
+            async let hrTask = fetchRestingHeartRate()
+            async let stepsTask = fetchStepCount()
+            async let hrvTask = fetchHRV()
+
+            let sleep = try? await sleepTask
+            let energy = try? await energyTask
+            let hr = try? await hrTask
+            let steps = try? await stepsTask
+            let hrv = try? await hrvTask
+
+            return HealthReadiness(
+                sleepHours: sleep,
+                activeEnergyKcal: energy,
+                restingHeartRate: hr,
+                stepCount: steps,
+                heartRateVariability: hrv,
+                assessedAt: Date()
+            )
+        } catch {
+            return .noHealthData
+        }
+        #endif
+    }
+
+    // MARK: - Helpers
+
+    private func fetchCumulativeStat(for identifier: HKQuantityTypeIdentifier, unit: HKUnit) async throws -> Double? {
+        let quantityType = HKObjectType.quantityType(forIdentifier: identifier)!
         let now = Date()
         let startOfDay = Calendar.current.startOfDay(for: now)
         let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
 
         let statistics = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<HKStatistics, Error>) in
             let query = HKStatisticsQuery(
-                quantityType: energyType,
+                quantityType: quantityType,
                 quantitySamplePredicate: predicate,
                 options: .cumulativeSum
             ) { _, statistics, error in
@@ -92,31 +165,48 @@ final class HealthKitManager {
             store.execute(query)
         }
 
-        return statistics.sumQuantity()?.doubleValue(for: .kilocalorie())
+        return statistics.sumQuantity()?.doubleValue(for: unit)
     }
 
-    func assessReadiness() async -> HealthReadiness {
-        do {
-            try await requestAuthorization()
+    private func fetchMostRecentSample(for identifier: HKQuantityTypeIdentifier, unit: HKUnit) async throws -> Double? {
+        let quantityType = HKObjectType.quantityType(forIdentifier: identifier)!
+        let now = Date()
+        let start = Calendar.current.date(byAdding: .hour, value: -24, to: now)!
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: now, options: .strictStartDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
 
-            async let sleepTask = fetchSleepHours()
-            async let energyTask = fetchActiveEnergy()
-
-            let sleep = try? await sleepTask
-            let energy = try? await energyTask
-
-            return HealthReadiness(
-                sleepHours: sleep,
-                activeEnergyKcal: energy,
-                assessedAt: Date()
-            )
-        } catch {
-            return .noHealthData
+        let sample = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<HKQuantitySample?, Error>) in
+            let query = HKSampleQuery(
+                sampleType: quantityType,
+                predicate: predicate,
+                limit: 1,
+                sortDescriptors: [sortDescriptor]
+            ) { _, results, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: results?.first as? HKQuantitySample)
+                }
+            }
+            store.execute(query)
         }
+
+        return sample?.quantity.doubleValue(for: unit)
     }
 }
 
 enum HealthKitError: Error {
     case noData
     case notAvailable
+}
+
+extension HealthReadiness {
+    static let simulatorMock = HealthReadiness(
+        sleepHours: 6.8,
+        activeEnergyKcal: 145,
+        restingHeartRate: 72,
+        stepCount: 3420,
+        heartRateVariability: 38,
+        assessedAt: Date()
+    )
 }
