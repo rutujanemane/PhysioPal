@@ -172,13 +172,13 @@ Update the file after completing each sub-task, not just after completing an ent
 
 ### Rutuja
 
-- [ ] 7.0 Supervision Engine — Camera setup & pose estimation integration
-  - [ ] 7.1 Create `CameraPreviewView` as UIViewRepresentable wrapping `AVCaptureSession` with `AVCaptureVideoPreviewLayer`
-  - [ ] 7.2 Configure `AVCaptureSession` with back camera input and `AVCaptureVideoDataOutput` at 30fps
-  - [ ] 7.3 Implement camera permission request flow — handle `.authorized`, `.denied`, `.restricted` states with user-friendly messages
-  - [ ] 7.4 Integrate ZeticAI Melange SDK — import framework, initialize on-device pose model
-  - [ ] 7.5 Create `PoseEstimationService` — process each camera frame buffer, run inference, return `PoseFrame` with landmark positions and confidence scores
-  - [ ] 7.6 Map MediaPipe pose landmarks to app's `JointID` enum (shoulders, elbows, wrists, hips, knees, ankles, nose)
+- [x] 7.0 Supervision Engine — Camera setup & pose estimation integration
+  - [x] 7.1 Create `CameraPreviewView` as UIViewRepresentable wrapping `AVCaptureSession` with `AVCaptureVideoPreviewLayer`
+  - [x] 7.2 Configure `AVCaptureSession` with back camera input and `AVCaptureVideoDataOutput` at 30fps
+  - [x] 7.3 Implement camera permission request flow — handle `.authorized`, `.denied`, `.restricted` states with user-friendly messages
+  - [x] 7.4 Integrate ZeticAI Melange SDK — import framework, initialize on-device pose model
+  - [x] 7.5 Create `PoseEstimationService` — process each camera frame buffer, run inference, return `PoseFrame` with landmark positions and confidence scores
+  - [x] 7.6 Map MediaPipe pose landmarks to app's `JointID` enum (shoulders, elbows, wrists, hips, knees, ankles, nose)
   - [ ] 7.7 Verify zero network calls during inference — all processing on Apple Neural Engine
 
 - [ ] 8.0 Exercise Library — Exercise definitions & form thresholds
@@ -186,32 +186,32 @@ Update the file after completing each sub-task, not just after completing an ent
   - [ ] 8.2 Validate thresholds for chair-assisted squats (knee 80–120°)
   - [ ] 8.3 Validate thresholds for standing leg raises (knee 150–180°, torso 140–180°)
   - [ ] 8.4 Validate thresholds for wall push-ups (elbow 70–120°, body line 160–180°)
-  - [ ] 8.5 Create `ExerciseEvaluator` service — accept a `PoseFrame` and `Exercise`, compare detected joint angles against each FormRule, return `FormEvaluation` with list of violations
+  - [x] 8.5 Create `ExerciseEvaluator` service — accept a `PoseFrame` and `Exercise`, compare detected joint angles against each FormRule, return `FormEvaluation` with list of violations
   - [ ] 8.6 Implement rep detection logic — detect transition from standing → squat → standing (or equivalent per exercise) using angle thresholds to count one completed rep
 
 - [ ] 9.0 Supervision Engine — Real-time form evaluation & feedback UI
-  - [ ] 9.1 Create `SupervisionViewModel` — `@Published` currentExercise, repCount, correctRepCount, consecutiveFailures, currentStreak, formFeedback; process each PoseFrame through ExerciseEvaluator
-  - [ ] 9.2 Create `PoseOverlayView` — draw skeletal lines (4pt stroke, teal `#2A9D8F`) connecting joint pairs, filled joint dots (12pt diameter), laid over camera feed
-  - [ ] 9.3 Highlight joints with violations in red (`#E63946`) on skeleton overlay, keep correct joints in teal
-  - [ ] 9.4 Create `FeedbackOverlayView` — semi-transparent pill (`background: black 70%, white text, 24pt bold`) at top-center of camera feed, shows correction message only when form is incorrect
-  - [ ] 9.5 Add rep counter display — 48pt bold numeral in bottom-right of camera area
-  - [ ] 9.6 Add green pulse animation on rep counter + `.success` haptic when a correct rep completes
+  - [x] 9.1 Create `SupervisionViewModel` — `@Published` currentExercise, repCount, correctRepCount, consecutiveFailures, currentStreak, formFeedback; process each PoseFrame through ExerciseEvaluator
+  - [x] 9.2 Create `PoseOverlayView` — draw skeletal lines (4pt stroke, teal `#2A9D8F`) connecting joint pairs, filled joint dots (12pt diameter), laid over camera feed
+  - [x] 9.3 Highlight joints with violations in red (`#E63946`) on skeleton overlay, keep correct joints in teal
+  - [x] 9.4 Create `FeedbackOverlayView` — semi-transparent pill (`background: black 70%, white text, 24pt bold`) at top-center of camera feed, shows correction message only when form is incorrect
+  - [x] 9.5 Add rep counter display — 48pt bold numeral in bottom-right of camera area
+  - [x] 9.6 Add green pulse animation on rep counter + `.success` haptic when a correct rep completes
   - [ ] 9.7 Add subtle teal confetti burst (20–30 particles, fade in <1s) behind rep counter on 3+ correct rep streak
   - [ ] 9.8 Add exercise-complete transition — camera feed blurs, large checkmark scales up with bounce, transitions to reward screen
-  - [ ] 9.9 Create `ExerciseSessionView` — compose CameraPreviewView (top 60%), PoseOverlayView, FeedbackOverlayView, rep counter; controls below camera feed only
-  - [ ] 9.10 Wire escalation trigger — when `consecutiveFailures >= 3` on same exercise, call `onEscalate` callback
+  - [x] 9.9 Create `ExerciseSessionView` — compose CameraPreviewView (top 60%), PoseOverlayView, FeedbackOverlayView, rep counter; controls below camera feed only
+  - [x] 9.10 Wire escalation trigger — when `consecutiveFailures >= 3` on same exercise, call `onEscalate` callback
 
 - [ ] 10.0 Reward System — Reward animation & exercise summary screen
-  - [ ] 10.1 Create `RewardViewModel` — accept `SessionSummary`, compute display values (total reps, accuracy %, formatted duration, isPerfect, milestone checks)
-  - [ ] 10.2 Create `ExerciseSummaryView` — white card with large text: reps completed, form accuracy %, session duration; styled per design system
-  - [ ] 10.3 Create `RewardAnimationView` — display 5 translucent alien hacker characters (alpha 0.6) overlaying the summary; characters should not obscure the stats
-  - [ ] 10.4 Implement fist bump animation for alien characters — use Lottie if asset available, else SwiftUI spring animation with scale + rotation
+  - [x] 10.1 Create `RewardViewModel` — accept `SessionSummary`, compute display values (total reps, accuracy %, formatted duration, isPerfect, milestone checks)
+  - [x] 10.2 Create `ExerciseSummaryView` — white card with large text: reps completed, form accuracy %, session duration; styled per design system
+  - [x] 10.3 Create `RewardAnimationView` — display 5 translucent alien hacker characters (alpha 0.6) overlaying the summary; characters should not obscure the stats
+  - [x] 10.4 Implement fist bump animation for alien characters — use Lottie if asset available, else SwiftUI spring animation with scale + rotation
   - [ ] 10.5 Add "Perfect Form" gold shimmer badge — gold border shimmer on summary card + star icon when accuracy is 100%
   - [ ] 10.6 Add first-session milestone — "Welcome to your recovery journey" card with gentle scale-up animation
   - [ ] 10.7 Add streak milestone animation — flame/streak icon with count, scale + rotation animation
   - [ ] 10.8 Add rep milestone animation (50th, 100th lifetime rep) — rep counter burst scales 1.5x with radiating teal rings
   - [ ] 10.9 Ensure all celebration animations auto-dismiss after 2–3 seconds or on tap (whichever comes first)
-  - [ ] 10.10 Add "Done" / "Back to Home" primary button at bottom of screen
+  - [x] 10.10 Add "Done" / "Back to Home" primary button at bottom of screen
 
 ### Shared (Integration)
 

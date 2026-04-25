@@ -10,26 +10,37 @@ enum AppFlowStep {
 struct AppFlowView: View {
     @StateObject private var contextVM = ContextEngineViewModel()
     @State private var currentStep: AppFlowStep = .healthCheck
+    @State private var activeRoutine: ExerciseRoutine?
 
     var body: some View {
         Group {
             switch currentStep {
             case .healthCheck:
                 HealthRecommendationView(viewModel: contextVM) { routine in
+                    activeRoutine = routine
+                    // #region agent log
+                    print("[AppFlowView][H6] transition healthCheck -> exercise")
+                    // #endregion
                     withAnimation(.easeInOut(duration: AppAnimation.screenTransition)) {
                         currentStep = .exercise(routine)
                     }
                 }
 
             case .exercise(let routine):
-                ExerciseSessionPlaceholder(
+                ExerciseSessionView(
                     routine: routine,
                     onComplete: { summary in
+                        // #region agent log
+                        print("[AppFlowView][H6] transition exercise -> reward")
+                        // #endregion
                         withAnimation(.easeInOut(duration: AppAnimation.screenTransition)) {
                             currentStep = .reward(summary)
                         }
                     },
                     onEscalate: {
+                        // #region agent log
+                        print("[AppFlowView][H6] transition exercise -> escalation")
+                        // #endregion
                         withAnimation(.easeInOut(duration: AppAnimation.screenTransition)) {
                             currentStep = .escalation
                         }
@@ -37,7 +48,10 @@ struct AppFlowView: View {
                 )
 
             case .reward(let summary):
-                RewardPlaceholder(summary: summary) {
+                RewardAnimationView(summary: summary) {
+                    // #region agent log
+                    print("[AppFlowView][H6] transition reward -> healthCheck")
+                    // #endregion
                     withAnimation(.easeInOut(duration: AppAnimation.screenTransition)) {
                         currentStep = .healthCheck
                     }
@@ -45,10 +59,11 @@ struct AppFlowView: View {
 
             case .escalation:
                 EscalationView {
+                    // #region agent log
+                    print("[AppFlowView][H6] transition escalation -> exercise/healthCheck")
+                    // #endregion
                     withAnimation(.easeInOut(duration: AppAnimation.screenTransition)) {
-                        if case .exercise(let routine) = currentStep {
-                            currentStep = .exercise(routine)
-                        } else if let routine = contextVM.routine {
+                        if let routine = activeRoutine ?? contextVM.routine {
                             currentStep = .exercise(routine)
                         } else {
                             currentStep = .healthCheck

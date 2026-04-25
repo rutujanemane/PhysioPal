@@ -48,7 +48,7 @@ extension Exercise {
             id: "deep-squat",
             name: "Deep Squats",
             description: "Stand with feet shoulder-width apart, lower your hips until thighs are parallel to the ground.",
-            iconName: "figure.squat",
+            iconName: "figure.strengthtraining.traditional",
             standardReps: 15,
             reducedReps: 10,
             easierVariantID: "chair-squat",
