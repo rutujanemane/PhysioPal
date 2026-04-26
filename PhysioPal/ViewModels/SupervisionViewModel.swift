@@ -130,10 +130,16 @@ final class SupervisionViewModel: ObservableObject {
         let formConfidence = meanConfidence(smoothedFrame, joints: requiredForForm)
         let poseTrustedForForm = hasFormJoints && formConfidence >= 0.35
         currentPoseFrame = smoothedFrame
-        let kneeY = smoothedFrame.landmark(for: .leftKnee)?.position.y ?? 0.5
+        let kneeY = bestKneeY(from: smoothedFrame) ?? 0.5
         let exercise = routineExercises[idx].exercise
         let useSquatAngleReps = Self.usesSquatStyleRepCounting(exercise)
         let kneeAngle = bestKneeAngleDegrees(from: smoothedFrame)
+        let repConfidence = meanConfidence(
+            smoothedFrame,
+            joints: [.leftHip, .leftKnee, .leftAnkle, .rightHip, .rightKnee, .rightAnkle]
+        )
+        let hasRepSignal = kneeAngle != nil || bestKneeY(from: smoothedFrame) != nil
+        let poseTrustedForRep = hasRepSignal && repConfidence >= 0.2
         let isDownForForm: Bool = {
             if useSquatAngleReps, let a = kneeAngle {
                 return a < 140
@@ -172,7 +178,7 @@ final class SupervisionViewModel: ObservableObject {
             }
         }
 
-        if poseTrustedForForm {
+        if poseTrustedForRep {
             lowConfidenceFrameStreak = 0
             if isDownForForm {
                 trustedDownFrameStreak += 1
@@ -192,10 +198,8 @@ final class SupervisionViewModel: ObservableObject {
             }
         }
 
-        guard hasFormJoints else { return }
-
         let repCompleted: Bool = {
-            let canUpdateDetector = poseTrustedForForm && (
+            let canUpdateDetector = poseTrustedForRep && (
                 isDownForForm ? trustedDownFrameStreak >= 2 : trustedUpFrameStreak >= 2
             )
             guard canUpdateDetector else { return false }
@@ -237,6 +241,21 @@ final class SupervisionViewModel: ObservableObject {
             return l
         case let (nil, r?):
             return r
+        default:
+            return nil
+        }
+    }
+
+    private func bestKneeY(from frame: PoseFrame) -> CGFloat? {
+        let left = frame.landmark(for: .leftKnee)
+        let right = frame.landmark(for: .rightKnee)
+        switch (left, right) {
+        case let (l?, r?):
+            return l.confidence >= r.confidence ? l.position.y : r.position.y
+        case let (l?, nil):
+            return l.position.y
+        case let (nil, r?):
+            return r.position.y
         default:
             return nil
         }

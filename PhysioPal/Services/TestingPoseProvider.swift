@@ -28,8 +28,7 @@ final class TestingPoseProvider: SwitchablePoseProvider {
 
     func stop() {
         print("[TestingPoseProvider][H9] stop source=\(activeSource.rawValue)")
-        melangeProvider.stop()
-        visionProvider.stop()
+        activeProvider.stop()
     }
 
     func switchSource(to source: PoseSourceMode) {

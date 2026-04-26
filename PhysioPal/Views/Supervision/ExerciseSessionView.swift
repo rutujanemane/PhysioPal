@@ -9,9 +9,14 @@ struct ExerciseSessionView: View {
     let onBack: () -> Void
 
     @StateObject private var viewModel: SupervisionViewModel
+    @StateObject private var recorder = SessionVideoRecorder()
     @State private var captureSession = AVCaptureSession()
     @State private var previewSessionToken: Int = 0
     @State private var repScale: CGFloat = 1.0
+    @State private var hasExited = false
+    @State private var shouldRecordVideos = false
+    @State private var recordingExerciseIndex: Int?
+    @State private var lastKnownExerciseIndex = 0
 
     init(
         routine: ExerciseRoutine,
@@ -38,7 +43,7 @@ struct ExerciseSessionView: View {
                     HStack {
                         Button {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            onBack()
+                            endSession(exit: .back)
                         } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "chevron.left")
@@ -77,7 +82,7 @@ struct ExerciseSessionView: View {
                     .frame(height: geo.size.height * 0.60)
                     .clipShape(RoundedRectangle(cornerRadius: AppLayout.cardRadius))
                     .overlay(alignment: .bottomTrailing) {
-                        Text("\(viewModel.overallRepCount)")
+                        Text(currentExerciseRepDisplay)
                             .font(AppFonts.repCounter)
                             .foregroundStyle(.white)
                             .scaleEffect(repScale)
@@ -129,6 +134,46 @@ struct ExerciseSessionView: View {
                     }
                     .padding(.horizontal, AppLayout.screenPadding)
 
+                    Button {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        endSession(exit: .manualStop)
+                    } label: {
+                        Text("Stop Session")
+                            .font(AppFonts.button)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: AppLayout.buttonHeight)
+                            .background(AppColors.secondary)
+                            .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
+                    }
+                    .padding(.horizontal, AppLayout.screenPadding)
+
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        shouldRecordVideos.toggle()
+                        if shouldRecordVideos {
+                            startCurrentExerciseRecordingIfNeeded()
+                        } else {
+                            stopAndSaveCurrentRecording()
+                        }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: shouldRecordVideos ? "record.circle.fill" : "record.circle")
+                                .font(.system(size: 22, weight: .semibold))
+                            Text(shouldRecordVideos ? "Recording Enabled" : "Record Exercise Videos")
+                                .font(AppFonts.button)
+                        }
+                        .foregroundStyle(shouldRecordVideos ? .white : AppColors.primary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: AppLayout.buttonHeight)
+                        .background(
+                            shouldRecordVideos
+                            ? AnyView(RoundedRectangle(cornerRadius: AppLayout.buttonRadius).fill(AppColors.primary))
+                            : AnyView(RoundedRectangle(cornerRadius: AppLayout.buttonRadius).stroke(AppColors.primary, lineWidth: 2))
+                        )
+                    }
+                    .padding(.horizontal, AppLayout.screenPadding)
+
                     VStack(spacing: 8) {
                         Text(viewModel.currentExercise?.exercise.name ?? "Session Complete")
                             .font(AppFonts.heading)
@@ -148,46 +193,122 @@ struct ExerciseSessionView: View {
             }
         }
         .onAppear {
-            if viewModel.previewSession == nil {
-                configureCaptureSessionIfPossible()
-            }
             viewModel.start()
+            lastKnownExerciseIndex = viewModel.currentExerciseIndex
+            announceCurrentExercise()
         }
         .onDisappear {
             viewModel.stop()
-            if viewModel.previewSession == nil {
-                DispatchQueue.global(qos: .userInitiated).async {
-                    captureSession.stopRunning()
-                }
-            }
         }
         .onChange(of: viewModel.currentExerciseIndex) { _ in
+            handleExerciseTransition()
             if viewModel.isSessionComplete, viewModel.canSendCompletion() {
-                onComplete(viewModel.buildSummary())
+                endSession(exit: .complete)
             }
         }
         .onReceive(viewModel.$routineExercises) { _ in
             guard !viewModel.isSessionComplete else { return }
             if viewModel.shouldEscalate() {
                 viewModel.markEscalationHandled()
-                onEscalate()
+                endSession(exit: .escalation)
             }
         }
     }
 
-    private func configureCaptureSessionIfPossible() {
-        #if targetEnvironment(simulator)
-        // Keep simulator path simple; we still render overlays over a neutral camera layer.
-        #else
-        guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-              let input = try? AVCaptureDeviceInput(device: camera),
-              captureSession.canAddInput(input) else { return }
-        captureSession.beginConfiguration()
-        captureSession.addInput(input)
-        captureSession.commitConfiguration()
-        DispatchQueue.global(qos: .userInitiated).async {
-            captureSession.startRunning()
-        }
-        #endif
+    private enum ExitMode {
+        case complete
+        case escalation
+        case manualStop
+        case back
     }
+
+    private func startRecordingIfNeeded() {
+        guard !recorder.isRecording else { return }
+        let session = viewModel.previewSession ?? captureSession
+        recorder.startRecording(session: session)
+    }
+
+    private func startCurrentExerciseRecordingIfNeeded() {
+        guard shouldRecordVideos else { return }
+        guard !viewModel.isSessionComplete else { return }
+        guard recordingExerciseIndex == nil else { return }
+        guard viewModel.currentExercise != nil else { return }
+        let idx = viewModel.currentExerciseIndex
+        recordingExerciseIndex = idx
+        startRecordingIfNeeded()
+    }
+
+    private func stopAndSaveCurrentRecording(
+        markShared: Bool = false,
+        completion: (() -> Void)? = nil
+    ) {
+        guard let idx = recordingExerciseIndex else {
+            completion?()
+            return
+        }
+        recordingExerciseIndex = nil
+        let summary = viewModel.buildSummary()
+        let exerciseName = exerciseName(for: idx)
+        recorder.stopRecording { url in
+            if let url {
+                SessionVideoStore.shared.saveVideo(
+                    tempURL: url,
+                    summary: summary,
+                    exerciseName: exerciseName,
+                    markShared: markShared
+                )
+            }
+            completion?()
+        }
+    }
+
+    private func handleExerciseTransition() {
+        let newIndex = viewModel.currentExerciseIndex
+        let movedForward = newIndex > lastKnownExerciseIndex
+        lastKnownExerciseIndex = newIndex
+        if movedForward {
+            announceCurrentExercise()
+        }
+        if movedForward, shouldRecordVideos {
+            stopAndSaveCurrentRecording {
+                guard !viewModel.isSessionComplete else { return }
+                startCurrentExerciseRecordingIfNeeded()
+            }
+        }
+    }
+
+    private func announceCurrentExercise() {
+        guard let current = viewModel.currentExercise else { return }
+        VoiceGuidanceService.shared.speak(
+            "Now starting \(current.exercise.name). Begin at zero of \(current.targetReps) reps."
+        )
+    }
+
+    private func exerciseName(for index: Int) -> String? {
+        guard index >= 0, index < viewModel.routineExercises.count else { return nil }
+        return viewModel.routineExercises[index].exercise.name
+    }
+
+    private var currentExerciseRepDisplay: String {
+        guard let current = viewModel.currentExercise else { return "0/0" }
+        return "\(current.completedReps)/\(current.targetReps)"
+    }
+
+    private func endSession(exit: ExitMode) {
+        guard !hasExited else { return }
+        hasExited = true
+        let summary = viewModel.buildSummary()
+        if shouldRecordVideos {
+            stopAndSaveCurrentRecording(markShared: false)
+        }
+        switch exit {
+        case .complete, .manualStop:
+            onComplete(summary)
+        case .escalation:
+            onEscalate()
+        case .back:
+            onBack()
+        }
+    }
+
 }

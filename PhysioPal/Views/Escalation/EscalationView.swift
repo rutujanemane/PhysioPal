@@ -1,10 +1,15 @@
 import SwiftUI
+import AVKit
 
 struct EscalationView: View {
     @StateObject private var viewModel = EscalationViewModel()
+    @ObservedObject private var videoStore = SessionVideoStore.shared
     let onDismiss: () -> Void
 
     @State private var appeared = false
+    @State private var showVideoPlayer = false
+    @State private var showSharedToast = false
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         ZStack {
@@ -25,6 +30,10 @@ struct EscalationView: View {
                         callCompletedCard
                     } else {
                         actionButtons
+                    }
+
+                    if videoStore.latestVideo != nil {
+                        videoActionsCard
                     }
 
                     Spacer().frame(height: 20)
@@ -48,6 +57,35 @@ struct EscalationView: View {
             }
         } message: {
             Text("Don't worry — you can also try the video call option. \(viewModel.errorMessage)")
+        }
+        .alert("Delete latest video?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                SessionVideoStore.shared.deleteLatestSessionVideos()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will permanently remove the latest session video from this device.")
+        }
+        .sheet(isPresented: $showVideoPlayer) {
+            if let url = videoStore.latestVideo?.fileURL {
+                VideoPlayer(player: AVPlayer(url: url))
+                    .ignoresSafeArea()
+            }
+        }
+        .overlay(alignment: .top) {
+            if showSharedToast {
+                Text("Video shared with physiotherapist")
+                    .font(AppFonts.bodyBold)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .frame(height: 52)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(AppColors.success)
+                    )
+                    .padding(.top, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
     }
 
@@ -335,6 +373,70 @@ struct EscalationView: View {
         case .calling: return "Connecting..."
         case .failed: return "Try Again"
         default: return "Call My Physiotherapist"
+        }
+    }
+
+    private var videoActionsCard: some View {
+        VStack(spacing: AppLayout.elementSpacing) {
+            Button {
+                showVideoPlayer = true
+            } label: {
+                Text("View Latest Session Video")
+                    .font(AppFonts.button)
+                    .foregroundStyle(AppColors.primary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: AppLayout.buttonHeight)
+                    .background(
+                        RoundedRectangle(cornerRadius: AppLayout.buttonRadius)
+                            .stroke(AppColors.primary, lineWidth: 2)
+                    )
+            }
+
+            Button {
+                SessionVideoStore.shared.markLatestSessionVideosAsShared()
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    showSharedToast = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        showSharedToast = false
+                    }
+                }
+            } label: {
+                Text("Send Video to Physiotherapist")
+                    .font(AppFonts.button)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: AppLayout.buttonHeight)
+                    .background(AppColors.success)
+                    .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
+            }
+
+            Button {
+                SessionVideoStore.shared.unshareLatestSessionVideos()
+            } label: {
+                Text("Unshare Latest Video")
+                    .font(AppFonts.button)
+                    .foregroundStyle(AppColors.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: AppLayout.buttonHeight)
+                    .background(
+                        RoundedRectangle(cornerRadius: AppLayout.buttonRadius)
+                            .fill(AppColors.surface)
+                    )
+            }
+
+            Button {
+                showDeleteConfirm = true
+            } label: {
+                Text("Delete Latest Video")
+                    .font(AppFonts.button)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: AppLayout.buttonHeight)
+                    .background(AppColors.secondary)
+                    .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
+            }
         }
     }
 }

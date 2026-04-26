@@ -1,7 +1,16 @@
 import SwiftUI
+import AVKit
 
 struct PTSessionDetailView: View {
     let session: ExerciseSession
+    let showOnlySharedVideos: Bool
+    @ObservedObject private var videoStore = SessionVideoStore.shared
+    @State private var selectedVideo: SessionVideo?
+
+    init(session: ExerciseSession, showOnlySharedVideos: Bool = false) {
+        self.session = session
+        self.showOnlySharedVideos = showOnlySharedVideos
+    }
 
     var body: some View {
         ZStack {
@@ -12,6 +21,7 @@ struct PTSessionDetailView: View {
                     Spacer().frame(height: 8)
 
                     summaryHeader
+                    sharedVideoCard
                     exerciseList
                     overallCard
 
@@ -27,6 +37,10 @@ struct PTSessionDetailView: View {
                     .font(AppFonts.bodyBold)
                     .foregroundStyle(AppColors.textPrimary)
             }
+        }
+        .sheet(item: $selectedVideo) { video in
+            VideoPlayer(player: AVPlayer(url: video.fileURL))
+                .ignoresSafeArea()
         }
     }
 
@@ -176,6 +190,63 @@ struct PTSessionDetailView: View {
             RoundedRectangle(cornerRadius: AppLayout.cardRadius)
                 .stroke(accuracyColor(session.overallAccuracy).opacity(0.2), lineWidth: 1)
         )
+    }
+
+    private var sharedVideoCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Session Video")
+                .font(AppFonts.heading)
+                .foregroundStyle(AppColors.textPrimary)
+
+            let videos = showOnlySharedVideos
+                ? videoStore.sharedVideos(for: session)
+                : videoStore.videos(for: session)
+            if !videos.isEmpty {
+                ForEach(videos) { video in
+                    Button {
+                        selectedVideo = video
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "video.fill")
+                                .font(.system(size: 24))
+                                .foregroundStyle(AppColors.primary)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(video.exerciseName ?? "Shared by patient")
+                                    .font(AppFonts.bodyBold)
+                                    .foregroundStyle(AppColors.textPrimary)
+                                Text("Tap to play this video clip")
+                                    .font(AppFonts.caption)
+                                    .foregroundStyle(AppColors.textSecondary)
+                            }
+                            Spacer()
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 28))
+                                .foregroundStyle(AppColors.success)
+                        }
+                        .padding(AppLayout.cardPadding)
+                        .background(
+                            RoundedRectangle(cornerRadius: AppLayout.cardRadius)
+                                .fill(AppColors.cardWhite)
+                                .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
+                        )
+                    }
+                }
+            } else {
+                HStack(spacing: 10) {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(AppColors.textSecondary)
+                    Text("This session video has not been shared by the patient.")
+                        .font(AppFonts.caption)
+                        .foregroundStyle(AppColors.textSecondary)
+                }
+                .padding(AppLayout.cardPadding)
+                .background(
+                    RoundedRectangle(cornerRadius: AppLayout.cardRadius)
+                        .fill(AppColors.surface)
+                )
+            }
+        }
     }
 
     private var readinessColor: Color {

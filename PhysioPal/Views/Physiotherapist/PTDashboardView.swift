@@ -367,7 +367,7 @@ struct PTDashboardView: View {
             } else {
                 ForEach(viewModel.sessionStore.recentSessions) { session in
                     NavigationLink {
-                        PTSessionDetailView(session: session)
+                        PTSessionDetailView(session: session, showOnlySharedVideos: true)
                     } label: {
                         sessionCard(session)
                     }
@@ -504,4 +504,5 @@ struct PTDashboardView: View {
         if accuracy >= 70 { return AppColors.accent }
         return AppColors.secondary
     }
+
 }

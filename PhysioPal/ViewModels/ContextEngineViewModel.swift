@@ -31,6 +31,7 @@ final class ContextEngineViewModel: ObservableObject {
 
         let shouldReduce = readiness.level.shouldReduceRoutine
         var routineExercises: [RoutineExercise] = []
+        var addedExerciseIDs = Set<String>()
 
         for item in store.assignedExercises {
             guard let baseExercise = Exercise.find(byID: item.exerciseID) else { continue }
@@ -49,6 +50,11 @@ final class ContextEngineViewModel: ObservableObject {
                 exercise = baseExercise
                 reps = item.targetReps
             }
+
+            // Reduced routines can map multiple base exercises to one easier variant.
+            // Keep routine exercises unique to avoid duplicate cards like chair-squats twice.
+            guard !addedExerciseIDs.contains(exercise.id) else { continue }
+            addedExerciseIDs.insert(exercise.id)
 
             routineExercises.append(
                 RoutineExercise(exercise: exercise, targetReps: reps)
