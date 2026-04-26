@@ -3,6 +3,7 @@ import SwiftUI
 
 struct HomeView: View {
     @StateObject private var sessionStore = SessionStore.shared
+    @StateObject private var routineStore = RoutineStore.shared
     @State private var healthMetrics: HealthReadiness?
     @State private var isLoadingHealth = true
     @State private var appeared = false
@@ -99,26 +100,45 @@ struct HomeView: View {
                 .redacted(reason: .placeholder)
             }
 
-            NavigationLink {
-                AppFlowView()
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 22))
-                    Text("Start Today's Session")
-                        .font(AppFonts.button)
+            if routineStore.hasAssignedRoutine {
+                NavigationLink {
+                    AppFlowView()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 22))
+                        Text("Start Today's Session")
+                            .font(AppFonts.button)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: AppLayout.buttonHeight)
+                    .background(AppColors.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
+                    .shadow(color: AppColors.primary.opacity(0.3), radius: 8, y: 4)
                 }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: AppLayout.buttonHeight)
-                .background(AppColors.primary)
-                .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
-                .shadow(color: AppColors.primary.opacity(0.3), radius: 8, y: 4)
+                .simultaneousGesture(TapGesture().onEnded {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                })
+                .accessibilityLabel("Start today's exercise session")
+            } else {
+                VStack(spacing: 10) {
+                    Image(systemName: "list.clipboard")
+                        .font(.system(size: 32))
+                        .foregroundStyle(AppColors.textSecondary.opacity(0.5))
+
+                    Text("No routine assigned yet")
+                        .font(AppFonts.bodyBold)
+                        .foregroundStyle(AppColors.textPrimary)
+
+                    Text("Your physiotherapist will create a routine for you. Once assigned, you can start here.")
+                        .font(AppFonts.caption)
+                        .foregroundStyle(AppColors.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                }
+                .padding(.vertical, 8)
             }
-            .simultaneousGesture(TapGesture().onEnded {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            })
-            .accessibilityLabel("Start today's exercise session")
         }
         .padding(AppLayout.cardPadding)
         .background(

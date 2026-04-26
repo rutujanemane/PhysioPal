@@ -14,6 +14,8 @@ struct HealthRecommendationView: View {
                 loadingState
             } else if let readiness = viewModel.readiness, let routine = viewModel.routine {
                 readyState(readiness: readiness, routine: routine)
+            } else if viewModel.readiness != nil && viewModel.routine == nil {
+                noRoutineState
             }
         }
         .task {
@@ -34,6 +36,71 @@ struct HealthRecommendationView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(AppLayout.screenPadding)
+    }
+
+    private var noRoutineState: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer().frame(height: 40)
+
+                Image(systemName: "list.clipboard")
+                    .font(.system(size: 72))
+                    .foregroundStyle(AppColors.textSecondary.opacity(0.4))
+
+                VStack(spacing: 12) {
+                    Text("No Routine Assigned Yet")
+                        .font(AppFonts.title)
+                        .foregroundStyle(AppColors.textPrimary)
+                        .multilineTextAlignment(.center)
+
+                    Text("Your physiotherapist hasn't created a routine for you yet. Once they assign exercises, they'll appear here.")
+                        .font(AppFonts.body)
+                        .foregroundStyle(AppColors.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(6)
+                }
+
+                if let readiness = viewModel.readiness {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 12) {
+                            Image(systemName: readiness.level.iconName)
+                                .font(.system(size: 24))
+                                .foregroundStyle(readinessColor(readiness.level))
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Your Health Today")
+                                    .font(AppFonts.bodyBold)
+                                    .foregroundStyle(AppColors.textPrimary)
+                                Text(readiness.level.displayLabel)
+                                    .font(AppFonts.caption)
+                                    .foregroundStyle(readinessColor(readiness.level))
+                            }
+                            Spacer()
+                        }
+
+                        Text(readiness.explanation)
+                            .font(AppFonts.doctorsNote)
+                            .foregroundStyle(AppColors.textPrimary)
+                            .lineSpacing(6)
+                    }
+                    .padding(AppLayout.cardPadding)
+                    .background(
+                        RoundedRectangle(cornerRadius: AppLayout.cardRadius)
+                            .fill(AppColors.cardWhite)
+                            .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
+                    )
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, AppLayout.screenPadding)
+        }
+        .opacity(showContent ? 1 : 0)
+        .onAppear {
+            withAnimation(.easeOut(duration: AppAnimation.screenTransition).delay(0.2)) {
+                showContent = true
+            }
+        }
     }
 
     private func readyState(readiness: HealthReadiness, routine: ExerciseRoutine) -> some View {
@@ -158,6 +225,14 @@ struct HealthRecommendationView: View {
             .shadow(color: AppColors.primary.opacity(0.3), radius: 8, y: 4)
         }
         .accessibilityLabel("Start your exercise routine")
+    }
+
+    private func readinessColor(_ level: ReadinessLevel) -> Color {
+        switch level {
+        case .normal: return AppColors.success
+        case .moderate: return AppColors.accent
+        case .low: return AppColors.secondary
+        }
     }
 
     private var greetingText: String {

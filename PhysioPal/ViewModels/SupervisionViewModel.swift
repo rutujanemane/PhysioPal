@@ -33,6 +33,7 @@ final class SupervisionViewModel: ObservableObject {
     private var lastRepAt: TimeInterval = 0
     private let squatRepDetector = SquatRepDetector()
     private let verticalKneeRepDetector = VerticalKneeHysteresisRepDetector()
+    private let armRaiseRepDetector = ArmRaiseRepDetector()
     private let targetProcessingInterval: TimeInterval = 1.0 / 15.0
     private let voiceCueCooldown: TimeInterval = 1.8
     private let minRepInterval: TimeInterval = 0.35
@@ -187,6 +188,7 @@ final class SupervisionViewModel: ObservableObject {
             if lowConfidenceFrameStreak >= 5 {
                 squatRepDetector.reset()
                 verticalKneeRepDetector.reset()
+                armRaiseRepDetector.reset()
             }
         }
 
@@ -200,6 +202,10 @@ final class SupervisionViewModel: ObservableObject {
             if useSquatAngleReps, let a = kneeAngle {
                 return squatRepDetector.update(kneeAngle: a)
             }
+            if Self.usesArmRaiseRepCounting(exercise),
+               let wristY = smoothedFrame.landmark(for: .leftWrist)?.position.y {
+                return armRaiseRepDetector.update(wristY: wristY)
+            }
             return verticalKneeRepDetector.update(kneeY: kneeY)
         }()
 
@@ -212,7 +218,11 @@ final class SupervisionViewModel: ObservableObject {
     }
 
     private static func usesSquatStyleRepCounting(_ exercise: Exercise) -> Bool {
-        exercise.id == "deep-squat" || exercise.id == "chair-squat"
+        ["deep-squat", "chair-squat", "standing-hamstring-curl", "sit-to-stand"].contains(exercise.id)
+    }
+
+    private static func usesArmRaiseRepCounting(_ exercise: Exercise) -> Bool {
+        exercise.id == "seated-shoulder-flexion"
     }
 
     private func bestKneeAngleDegrees(from frame: PoseFrame) -> Double? {
@@ -272,6 +282,7 @@ final class SupervisionViewModel: ObservableObject {
             lastVoiceCueAt = 0
             squatRepDetector.reset()
             verticalKneeRepDetector.reset()
+            armRaiseRepDetector.reset()
             evaluator.reset()
             poseSmoothing.reset()
             escalationLockedExerciseIndex = nil

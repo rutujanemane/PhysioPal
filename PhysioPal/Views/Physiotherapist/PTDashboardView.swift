@@ -46,6 +46,7 @@ struct PTDashboardView: View {
                 Spacer().frame(height: 8)
 
                 patientHeader
+                routineManagementSection
                 healthMetricsSection
                 readinessCard
                 weeklyOverview
@@ -97,6 +98,90 @@ struct PTDashboardView: View {
                 .fill(AppColors.cardWhite)
                 .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
         )
+    }
+
+    // MARK: - Routine Management
+
+    private var routineManagementSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Exercise Routine")
+                .font(AppFonts.heading)
+                .foregroundStyle(AppColors.textPrimary)
+
+            VStack(spacing: 16) {
+                if viewModel.routineStore.hasAssignedRoutine {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundStyle(AppColors.success)
+                            Text("Routine assigned — \(viewModel.routineStore.assignedExercises.count) exercises")
+                                .font(AppFonts.bodyBold)
+                                .foregroundStyle(AppColors.textPrimary)
+                            Spacer()
+                        }
+
+                        ForEach(viewModel.routineStore.assignedExercises) { item in
+                            if let exercise = Exercise.find(byID: item.exerciseID) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: exercise.iconName)
+                                        .font(.system(size: 18))
+                                        .foregroundStyle(AppColors.primary)
+                                        .frame(width: 32)
+
+                                    Text(exercise.name)
+                                        .font(AppFonts.body)
+                                        .foregroundStyle(AppColors.textPrimary)
+
+                                    Spacer()
+
+                                    Text("\(item.targetReps) reps")
+                                        .font(AppFonts.caption)
+                                        .foregroundStyle(AppColors.textSecondary)
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+                    }
+                } else {
+                    HStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.circle")
+                            .font(.system(size: 20))
+                            .foregroundStyle(AppColors.accent)
+                        Text("No routine assigned yet")
+                            .font(AppFonts.body)
+                            .foregroundStyle(AppColors.textSecondary)
+                        Spacer()
+                    }
+                }
+
+                NavigationLink {
+                    PTRoutineBuilderView()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: viewModel.routineStore.hasAssignedRoutine ? "pencil.circle.fill" : "plus.circle.fill")
+                            .font(.system(size: 22))
+                        Text(viewModel.routineStore.hasAssignedRoutine ? "Edit Routine" : "Create Routine")
+                            .font(AppFonts.button)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: AppLayout.buttonHeight)
+                    .background(AppColors.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
+                    .shadow(color: AppColors.primary.opacity(0.3), radius: 8, y: 4)
+                }
+                .simultaneousGesture(TapGesture().onEnded {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                })
+            }
+            .padding(AppLayout.cardPadding)
+            .background(
+                RoundedRectangle(cornerRadius: AppLayout.cardRadius)
+                    .fill(AppColors.cardWhite)
+                    .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
+            )
+        }
     }
 
     // MARK: - Health Metrics

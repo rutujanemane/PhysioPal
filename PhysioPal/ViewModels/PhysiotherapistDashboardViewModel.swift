@@ -10,6 +10,7 @@ final class PhysiotherapistDashboardViewModel: ObservableObject {
 
     private let healthKit = HealthKitManager.shared
     let sessionStore = SessionStore.shared
+    let routineStore = RoutineStore.shared
 
     func loadDashboard() async {
         isLoadingHealth = true

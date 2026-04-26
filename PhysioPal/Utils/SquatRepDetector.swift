@@ -57,3 +57,30 @@ final class VerticalKneeHysteresisRepDetector {
         lastRepTime = .distantPast
     }
 }
+
+/// Tracks arm raise reps via wrist Y position — arm goes up (Y decreases), then back down (Y increases).
+final class ArmRaiseRepDetector {
+    private var upLatched = false
+    private var lastRepTime: Date = .distantPast
+    private let debounceDuration: TimeInterval = 0.85
+    private let raiseThreshold: Double = 0.40
+    private let lowerThreshold: Double = 0.55
+
+    func update(wristY: Double) -> Bool {
+        if wristY < raiseThreshold { upLatched = true }
+        if upLatched, wristY > lowerThreshold {
+            upLatched = false
+            let now = Date()
+            if now.timeIntervalSince(lastRepTime) >= debounceDuration {
+                lastRepTime = now
+                return true
+            }
+        }
+        return false
+    }
+
+    func reset() {
+        upLatched = false
+        lastRepTime = .distantPast
+    }
+}
