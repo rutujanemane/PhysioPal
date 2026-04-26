@@ -41,10 +41,18 @@ struct AppFlowView: View {
                             currentStep = .reward(summary)
                         }
                     },
-                    onEscalate: {
+                    onEscalate: { summary, sharedVideoCount in
                         // #region agent log
                         print("[AppFlowView][H6] transition exercise -> escalation")
                         // #endregion
+                        SessionStore.shared.record(
+                            summary: summary,
+                            readiness: contextVM.readiness ?? .noHealthData
+                        )
+                        IncidentStore.shared.recordEscalation(
+                            summary: summary,
+                            sharedVideoCount: sharedVideoCount
+                        )
                         withAnimation(.easeInOut(duration: AppAnimation.screenTransition)) {
                             currentStep = .escalation
                         }
