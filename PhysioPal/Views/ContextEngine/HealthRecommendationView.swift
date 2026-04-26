@@ -26,17 +26,45 @@ struct HealthRecommendationView: View {
 
     private var loadingState: some View {
         VStack(spacing: 24) {
-            Image(systemName: "heart.text.clipboard.fill")
+            Image(systemName: loadingIcon)
                 .font(.system(size: 64))
                 .foregroundStyle(AppColors.primary)
                 .symbolEffect(.pulse, options: .repeating)
 
-            Text("Checking how you're feeling today...")
+            Text(loadingMessage)
                 .font(AppFonts.body)
                 .foregroundStyle(AppColors.textSecondary)
                 .multilineTextAlignment(.center)
+
+            if case .downloading(let progress) = viewModel.llmStatus {
+                VStack(spacing: 8) {
+                    ProgressView(value: progress)
+                        .tint(AppColors.primary)
+                        .frame(maxWidth: 220)
+
+                    Text("Downloading health model... \(Int(progress * 100))%")
+                        .font(AppFonts.caption)
+                        .foregroundStyle(AppColors.textSecondary)
+                }
+            }
         }
         .padding(AppLayout.screenPadding)
+    }
+
+    private var loadingIcon: String {
+        switch viewModel.llmStatus {
+        case .analyzing: return "brain"
+        case .downloading: return "arrow.down.circle.fill"
+        default: return "heart.text.clipboard.fill"
+        }
+    }
+
+    private var loadingMessage: String {
+        switch viewModel.llmStatus {
+        case .analyzing: return "Analyzing your health data..."
+        case .downloading: return "Preparing your health assistant..."
+        default: return "Checking how you're feeling today..."
+        }
     }
 
     private var noRoutineState: some View {
@@ -110,6 +138,10 @@ struct HealthRecommendationView: View {
                 Spacer().frame(height: 8)
 
                 greetingSection
+
+                if isLLMInProgress {
+                    llmUpdatingBanner
+                }
 
                 voiceConversationCard
 
@@ -309,6 +341,43 @@ struct HealthRecommendationView: View {
         case .normal: return AppColors.success
         case .moderate: return AppColors.accent
         case .low: return AppColors.secondary
+        }
+    }
+
+    private var isLLMInProgress: Bool {
+        switch viewModel.llmStatus {
+        case .downloading, .analyzing: return true
+        case .idle, .done, .fallback: return false
+        }
+    }
+
+    private var llmUpdatingBanner: some View {
+        HStack(spacing: 12) {
+            ProgressView()
+                .tint(AppColors.primary)
+
+            Text(llmBannerMessage)
+                .font(AppFonts.caption)
+                .foregroundStyle(AppColors.textSecondary)
+
+            Spacer()
+        }
+        .padding(AppLayout.cardPadding)
+        .background(
+            RoundedRectangle(cornerRadius: AppLayout.cardRadius)
+                .fill(AppColors.primary.opacity(0.08))
+        )
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    private var llmBannerMessage: String {
+        switch viewModel.llmStatus {
+        case .downloading(let p) where p > 0:
+            return "Downloading health model... \(Int(p * 100))%"
+        case .analyzing:
+            return "Personalizing your routine with AI..."
+        default:
+            return "Preparing your health assistant..."
         }
     }
 
