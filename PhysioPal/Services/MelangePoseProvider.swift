@@ -209,7 +209,7 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
                     guard self.isPlausiblePoseFrame(frame) else {
                         self.inferenceFailureCount += 1
                         if self.inferenceFailureCount == 1 {
-                            print("[MelangePoseProvider] Parsed landmarks are implausible on screen; staying on Melange in test mode.")
+                            print("[MelangePoseProvider] Parsed landmarks are implausible on screen.")
                             // #region agent log
                             self.debugLog(
                                 hypothesisId: "H5",
@@ -226,8 +226,12 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
                             )
                             // #endregion
                         }
-                        // In test mode, keep Melange active; Vision should be selected manually.
-                        print("[MelangePoseProvider][DEBUG] keeping Melange active (no auto-fallback).")
+                        if self.inferenceFailureCount >= 20 {
+                            print("[MelangePoseProvider] Implausible Melange frames persisted. Switching to Vision fallback.")
+                            self.activateFallback()
+                        } else {
+                            print("[MelangePoseProvider][DEBUG] implausible Melange frame #\(self.inferenceFailureCount)")
+                        }
                         return
                     }
                     self.inferenceFailureCount = 0
@@ -274,7 +278,10 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
                     self.melangeInferenceDisabled = true
                     print("[MelangePoseProvider] Disabled Melange inference due to input signature mismatch.")
                 }
-                // In test mode, do not auto-fallback. Keep provider stable for manual switching.
+                if self.successfulFrameCount == 0, self.inferenceFailureCount >= 12 {
+                    print("[MelangePoseProvider] Repeated inference errors. Switching to Vision fallback.")
+                    self.activateFallback()
+                }
             }
         }
     }

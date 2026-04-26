@@ -27,6 +27,18 @@ final class VoiceGuidanceService: NSObject, @unchecked Sendable {
 
     func speak(_ text: String, rate: Float = 0.48) {
         guard !text.isEmpty else { return }
+        // #region agent log
+        DebugProbe.log(
+            runId: "pre-fix",
+            hypothesisId: "H5_voice_cutoff",
+            location: "VoiceGuidanceService.speak",
+            message: "voice_request",
+            data: [
+                "text": text,
+                "isSpeakingBefore": synthesizer.isSpeaking ? "true" : "false"
+            ]
+        )
+        // #endregion
         synthesizer.stopSpeaking(at: .word)
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = rate

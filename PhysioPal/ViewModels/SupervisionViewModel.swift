@@ -29,6 +29,7 @@ final class SupervisionViewModel: ObservableObject {
     private var trustedUpFrameStreak = 0
     private var lowConfidenceFrameStreak = 0
     private var isAdvancingExercise = false
+    private var repDetectionResumeAt: TimeInterval = 0
     private var lastProcessedFrameAt: TimeInterval = 0
     private var lastRepAt: TimeInterval = 0
     private let squatRepDetector = SquatRepDetector()
@@ -37,6 +38,7 @@ final class SupervisionViewModel: ObservableObject {
     private let targetProcessingInterval: TimeInterval = 1.0 / 15.0
     private let voiceCueCooldown: TimeInterval = 1.8
     private let minRepInterval: TimeInterval = 0.35
+    private let exerciseTransitionPauseNanos: UInt64 = 2_500_000_000
 
     init(routine: ExerciseRoutine, poseProvider: PoseProviderProtocol = TestingPoseProvider(defaultSource: .melange)) {
         self.routineExercises = routine.exercises
@@ -64,6 +66,7 @@ final class SupervisionViewModel: ObservableObject {
     }
 
     func start() {
+        repDetectionResumeAt = Date().timeIntervalSince1970 + 0.8
         poseProvider.start { [weak self] frame in
             Task { @MainActor in
                 self?.process(frame: frame)
@@ -140,6 +143,11 @@ final class SupervisionViewModel: ObservableObject {
         )
         let hasRepSignal = kneeAngle != nil || bestKneeY(from: smoothedFrame) != nil
         let poseTrustedForRep = hasRepSignal && repConfidence >= 0.2
+        if now < repDetectionResumeAt {
+            highlightedJoints = []
+            feedbackMessage = nil
+            return
+        }
         let isDownForForm: Bool = {
             if useSquatAngleReps, let a = kneeAngle {
                 return a < 140
@@ -166,6 +174,20 @@ final class SupervisionViewModel: ObservableObject {
                 if canSpeakCue {
                     lastVoiceCue = msg
                     lastVoiceCueAt = now
+                    // #region agent log
+                    DebugProbe.log(
+                        runId: "pre-fix",
+                        hypothesisId: "H1_voice_interrupt",
+                        location: "SupervisionViewModel.process",
+                        message: "speak_correction",
+                        data: [
+                            "exerciseIndex": "\(idx)",
+                            "exerciseId": exercise.id,
+                            "message": msg,
+                            "cooldownSec": String(format: "%.2f", voiceCueCooldown)
+                        ]
+                    )
+                    // #endregion
                     VoiceGuidanceService.shared.speak(msg)
                 }
                 feedbackMessage = msg
@@ -269,6 +291,21 @@ final class SupervisionViewModel: ObservableObject {
 
     private func registerRep(for idx: Int) {
         routineExercises[idx].completedReps += 1
+        // #region agent log
+        DebugProbe.log(
+            runId: "pre-fix",
+            hypothesisId: "H2_transition_timing",
+            location: "SupervisionViewModel.registerRep",
+            message: "rep_registered",
+            data: [
+                "exerciseIndex": "\(idx)",
+                "exerciseId": routineExercises[idx].exercise.id,
+                "completed": "\(routineExercises[idx].completedReps)",
+                "target": "\(routineExercises[idx].targetReps)"
+            ]
+        )
+        // #endregion
+        VoiceGuidanceService.shared.speak("Nice work. Rep completed.")
         let shouldScoreForm = repSawTrustedDownFrame
         let violationRatio = repTotalDownFrames > 0
             ? Double(repViolationFrames) / Double(repTotalDownFrames)
@@ -287,25 +324,58 @@ final class SupervisionViewModel: ObservableObject {
 
         if routineExercises[idx].isComplete {
             isAdvancingExercise = true
-            currentExerciseIndex += 1
-            highlightedJoints = []
-            feedbackMessage = nil
-            lastEvaluationCorrect = true
-            repViolationFrames = 0
-            repTotalDownFrames = 0
-            repSawTrustedDownFrame = false
-            trustedDownFrameStreak = 0
-            trustedUpFrameStreak = 0
-            lowConfidenceFrameStreak = 0
-            lastVoiceCue = nil
-            lastVoiceCueAt = 0
-            squatRepDetector.reset()
-            verticalKneeRepDetector.reset()
-            armRaiseRepDetector.reset()
-            evaluator.reset()
-            poseSmoothing.reset()
-            escalationLockedExerciseIndex = nil
-            isAdvancingExercise = false
+            feedbackMessage = "Great work. Taking a short pause."
+            // #region agent log
+            DebugProbe.log(
+                runId: "pre-fix",
+                hypothesisId: "H2_transition_timing",
+                location: "SupervisionViewModel.registerRep",
+                message: "exercise_complete_pause_start",
+                data: [
+                    "exerciseIndex": "\(idx)",
+                    "nextExerciseIndex": "\(idx + 1)",
+                    "pauseSec": "2.5"
+                ]
+            )
+            // #endregion
+            VoiceGuidanceService.shared.speak("Great work. Short pause before the next exercise.")
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: exerciseTransitionPauseNanos)
+                guard currentExerciseIndex == idx else { return }
+                advanceToNextExercise()
+            }
         }
+    }
+
+    private func advanceToNextExercise() {
+        currentExerciseIndex += 1
+        repDetectionResumeAt = Date().timeIntervalSince1970 + 1.6
+        // #region agent log
+        DebugProbe.log(
+            runId: "pre-fix",
+            hypothesisId: "H2_transition_timing",
+            location: "SupervisionViewModel.advanceToNextExercise",
+            message: "advanced_to_next",
+            data: ["currentExerciseIndex": "\(currentExerciseIndex)"]
+        )
+        // #endregion
+        highlightedJoints = []
+        feedbackMessage = nil
+        lastEvaluationCorrect = true
+        repViolationFrames = 0
+        repTotalDownFrames = 0
+        repSawTrustedDownFrame = false
+        trustedDownFrameStreak = 0
+        trustedUpFrameStreak = 0
+        lowConfidenceFrameStreak = 0
+        lastVoiceCue = nil
+        lastVoiceCueAt = 0
+        squatRepDetector.reset()
+        verticalKneeRepDetector.reset()
+        armRaiseRepDetector.reset()
+        evaluator.reset()
+        poseSmoothing.reset()
+        escalationLockedExerciseIndex = nil
+        isAdvancingExercise = false
     }
 }

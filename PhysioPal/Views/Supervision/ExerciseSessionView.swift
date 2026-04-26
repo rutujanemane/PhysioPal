@@ -265,6 +265,20 @@ struct ExerciseSessionView: View {
     private func handleExerciseTransition() {
         let newIndex = viewModel.currentExerciseIndex
         let movedForward = newIndex > lastKnownExerciseIndex
+        // #region agent log
+        DebugProbe.log(
+            runId: "pre-fix",
+            hypothesisId: "H3_transition_view",
+            location: "ExerciseSessionView.handleExerciseTransition",
+            message: "transition_observed",
+            data: [
+                "oldIndex": "\(lastKnownExerciseIndex)",
+                "newIndex": "\(newIndex)",
+                "movedForward": movedForward ? "true" : "false",
+                "recordingEnabled": shouldRecordVideos ? "true" : "false"
+            ]
+        )
+        // #endregion
         lastKnownExerciseIndex = newIndex
         if movedForward {
             announceCurrentExercise()
@@ -279,6 +293,19 @@ struct ExerciseSessionView: View {
 
     private func announceCurrentExercise() {
         guard let current = viewModel.currentExercise else { return }
+        // #region agent log
+        DebugProbe.log(
+            runId: "pre-fix",
+            hypothesisId: "H4_announce_missing",
+            location: "ExerciseSessionView.announceCurrentExercise",
+            message: "announce_exercise",
+            data: [
+                "exerciseIndex": "\(viewModel.currentExerciseIndex)",
+                "exerciseName": current.exercise.name,
+                "targetReps": "\(current.targetReps)"
+            ]
+        )
+        // #endregion
         VoiceGuidanceService.shared.speak(
             "Now starting \(current.exercise.name). Begin at zero of \(current.targetReps) reps."
         )
