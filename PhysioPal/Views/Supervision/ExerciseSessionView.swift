@@ -6,6 +6,7 @@ struct ExerciseSessionView: View {
     let routine: ExerciseRoutine
     let onComplete: (SessionSummary) -> Void
     let onEscalate: () -> Void
+    let onBack: () -> Void
 
     @StateObject private var viewModel: SupervisionViewModel
     @State private var captureSession = AVCaptureSession()
@@ -16,11 +17,13 @@ struct ExerciseSessionView: View {
     init(
         routine: ExerciseRoutine,
         onComplete: @escaping (SessionSummary) -> Void,
-        onEscalate: @escaping () -> Void
+        onEscalate: @escaping () -> Void,
+        onBack: @escaping () -> Void
     ) {
         self.routine = routine
         self.onComplete = onComplete
         self.onEscalate = onEscalate
+        self.onBack = onBack
         _viewModel = StateObject(
             wrappedValue: SupervisionViewModel(routine: routine)
         )
@@ -33,6 +36,33 @@ struct ExerciseSessionView: View {
                 AppColors.background.ignoresSafeArea()
 
                 VStack(spacing: 16) {
+                    HStack {
+                        Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            onBack()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 22, weight: .semibold))
+                                Text("Back")
+                                    .font(AppFonts.button)
+                            }
+                            .foregroundStyle(AppColors.primary)
+                            .padding(.horizontal, 16)
+                            .frame(height: 56)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(.white)
+                                    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+                            )
+                        }
+                        .accessibilityLabel("Back to previous screen")
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, AppLayout.screenPadding)
+                    .padding(.top, 12)
+
                     ZStack(alignment: .top) {
                         CameraPreviewView(session: cameraSession)
                             .id(previewSessionToken)
@@ -65,7 +95,7 @@ struct ExerciseSessionView: View {
                             }
                     }
                     .padding(.horizontal, AppLayout.screenPadding)
-                    .padding(.top, 12)
+                    .padding(.top, 0)
 
                     HStack(spacing: 10) {
                         Button {

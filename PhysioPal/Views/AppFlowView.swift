@@ -48,6 +48,11 @@ struct AppFlowView: View {
                         withAnimation(.easeInOut(duration: AppAnimation.screenTransition)) {
                             currentStep = .escalation
                         }
+                    },
+                    onBack: {
+                        withAnimation(.easeInOut(duration: AppAnimation.screenTransition)) {
+                            currentStep = .healthCheck
+                        }
                     }
                 )
 
