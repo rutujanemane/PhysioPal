@@ -135,5 +135,9 @@ enum TwilioError: LocalizedError {
 }
 
 enum TwilioConfig {
-    static let serverURL = "http://10.30.216.93:5004"
+    #if targetEnvironment(simulator)
+    static let serverURL = "http://127.0.0.1:5004"
+    #else
+    static let serverURL = "https://lagoon-handgrip-glance.ngrok-free.dev"
+    #endif
 }

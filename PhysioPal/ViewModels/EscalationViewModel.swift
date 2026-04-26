@@ -29,11 +29,15 @@ final class EscalationViewModel: ObservableObject {
 
         let generator = UINotificationFeedbackGenerator()
 
+        print("[Escalation] Calling PT at \(TwilioConfig.serverURL)/make-call")
+
         do {
             let result = try await TwilioService.shared.callPhysiotherapist(
                 patientName: PatientProfile.mock.name,
                 exerciseName: "their exercise session"
             )
+
+            print("[Escalation] Call result: SID=\(result.callSID), status=\(result.status)")
 
             if result.status == .initiated {
                 callSID = result.callSID
@@ -45,6 +49,7 @@ final class EscalationViewModel: ObservableObject {
                 generator.notificationOccurred(.error)
             }
         } catch {
+            print("[Escalation] Call failed: \(error)")
             callState = .failed
             errorMessage = error.localizedDescription
             showError = true
