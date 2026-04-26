@@ -1,5 +1,11 @@
 import SwiftUI
 
+private enum PTBuilderColors {
+    static let accent = Color(hex: "3D5A80")
+    static let background = Color(hex: "F0F2F5")
+    static let cardBackground = Color.white
+}
+
 struct PTRoutineBuilderView: View {
     @StateObject private var routineStore = RoutineStore.shared
     @Environment(\.dismiss) private var dismiss
@@ -14,7 +20,7 @@ struct PTRoutineBuilderView: View {
 
     var body: some View {
         ZStack {
-            AppColors.background.ignoresSafeArea()
+            PTBuilderColors.background.ignoresSafeArea()
 
             ScrollView {
                 VStack(spacing: 20) {
@@ -34,9 +40,14 @@ struct PTRoutineBuilderView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text("Assign Routine")
-                    .font(AppFonts.bodyBold)
-                    .foregroundStyle(AppColors.textPrimary)
+                HStack(spacing: 8) {
+                    Image(systemName: "list.clipboard.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(PTBuilderColors.accent)
+                    Text("Assign Routine")
+                        .font(AppFonts.bodyBold)
+                        .foregroundStyle(PTBuilderColors.accent)
+                }
             }
         }
         .onAppear { loadCurrentSelections() }
@@ -53,7 +64,7 @@ struct PTRoutineBuilderView: View {
         HStack(spacing: 14) {
             Image(systemName: "list.clipboard.fill")
                 .font(.system(size: 32))
-                .foregroundStyle(AppColors.primary)
+                .foregroundStyle(PTBuilderColors.accent)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Build Routine")
@@ -97,9 +108,9 @@ struct PTRoutineBuilderView: View {
             HStack(spacing: 14) {
                 Image(systemName: exercise.iconName)
                     .font(.system(size: AppLayout.iconSize))
-                    .foregroundStyle(sel.isEnabled ? AppColors.primary : AppColors.textSecondary)
+                    .foregroundStyle(sel.isEnabled ? PTBuilderColors.accent : AppColors.textSecondary)
                     .frame(width: 44, height: 44)
-                    .background((sel.isEnabled ? AppColors.primary : AppColors.textSecondary).opacity(0.1))
+                    .background((sel.isEnabled ? PTBuilderColors.accent : AppColors.textSecondary).opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -124,7 +135,7 @@ struct PTRoutineBuilderView: View {
                         )
                     }
                 ))
-                .tint(AppColors.primary)
+                .tint(PTBuilderColors.accent)
                 .labelsHidden()
             }
 
@@ -143,7 +154,7 @@ struct PTRoutineBuilderView: View {
                     } label: {
                         Image(systemName: "minus.circle.fill")
                             .font(.system(size: 28))
-                            .foregroundStyle(AppColors.primary)
+                            .foregroundStyle(PTBuilderColors.accent)
                     }
                     .frame(width: 54, height: 54)
 
@@ -160,7 +171,7 @@ struct PTRoutineBuilderView: View {
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.system(size: 28))
-                            .foregroundStyle(AppColors.primary)
+                            .foregroundStyle(PTBuilderColors.accent)
                     }
                     .frame(width: 54, height: 54)
                 }
@@ -176,7 +187,7 @@ struct PTRoutineBuilderView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: AppLayout.cardRadius)
-                .stroke(sel.isEnabled ? AppColors.primary.opacity(0.3) : Color.clear, lineWidth: 1.5)
+                .stroke(sel.isEnabled ? PTBuilderColors.accent.opacity(0.3) : Color.clear, lineWidth: 1.5)
         )
         .animation(.easeInOut(duration: 0.25), value: sel.isEnabled)
     }
@@ -201,9 +212,9 @@ struct PTRoutineBuilderView: View {
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .frame(height: AppLayout.buttonHeight)
-            .background(selectedCount > 0 ? AppColors.primary : AppColors.textSecondary)
+            .background(selectedCount > 0 ? PTBuilderColors.accent : AppColors.textSecondary)
             .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
-            .shadow(color: (selectedCount > 0 ? AppColors.primary : AppColors.textSecondary).opacity(0.3), radius: 8, y: 4)
+            .shadow(color: (selectedCount > 0 ? PTBuilderColors.accent : AppColors.textSecondary).opacity(0.3), radius: 8, y: 4)
         }
         .disabled(selectedCount == 0)
     }

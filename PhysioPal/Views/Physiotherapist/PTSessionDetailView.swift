@@ -1,6 +1,12 @@
 import SwiftUI
 import AVKit
 
+private enum PTDetailColors {
+    static let accent = Color(hex: "3D5A80")
+    static let background = Color(hex: "F0F2F5")
+    static let cardBackground = Color.white
+}
+
 struct PTSessionDetailView: View {
     let session: ExerciseSession
     let showOnlySharedVideos: Bool
@@ -14,7 +20,7 @@ struct PTSessionDetailView: View {
 
     var body: some View {
         ZStack {
-            AppColors.background.ignoresSafeArea()
+            PTDetailColors.background.ignoresSafeArea()
 
             ScrollView {
                 VStack(spacing: 20) {
@@ -33,9 +39,14 @@ struct PTSessionDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text("Session Details")
-                    .font(AppFonts.bodyBold)
-                    .foregroundStyle(AppColors.textPrimary)
+                HStack(spacing: 8) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(PTDetailColors.accent)
+                    Text("Session Details")
+                        .font(AppFonts.bodyBold)
+                        .foregroundStyle(PTDetailColors.accent)
+                }
             }
         }
         .sheet(item: $selectedVideo) { video in
@@ -79,7 +90,7 @@ struct PTSessionDetailView: View {
         .padding(AppLayout.cardPadding)
         .background(
             RoundedRectangle(cornerRadius: AppLayout.cardRadius)
-                .fill(AppColors.cardWhite)
+                .fill(PTDetailColors.cardBackground)
                 .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
         )
     }
@@ -88,7 +99,7 @@ struct PTSessionDetailView: View {
         VStack(spacing: 6) {
             Image(systemName: icon)
                 .font(.system(size: 18))
-                .foregroundStyle(AppColors.primary)
+                .foregroundStyle(PTDetailColors.accent)
 
             Text(value)
                 .font(AppFonts.bodyBold)
@@ -103,9 +114,14 @@ struct PTSessionDetailView: View {
 
     private var exerciseList: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Exercises")
-                .font(AppFonts.heading)
-                .foregroundStyle(AppColors.textPrimary)
+            HStack(spacing: 8) {
+                Image(systemName: "figure.strengthtraining.functional")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(PTDetailColors.accent)
+                Text("Exercises")
+                    .font(AppFonts.heading)
+                    .foregroundStyle(PTDetailColors.accent)
+            }
 
             ForEach(session.exercises) { exercise in
                 exerciseRow(exercise)
@@ -114,51 +130,60 @@ struct PTSessionDetailView: View {
     }
 
     private func exerciseRow(_ exercise: CompletedExercise) -> some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 14) {
-                Image(systemName: exercise.iconName)
-                    .font(.system(size: AppLayout.iconSize))
-                    .foregroundStyle(AppColors.primary)
-                    .frame(width: 44, height: 44)
-                    .background(AppColors.primary.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+        HStack(spacing: 0) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(accuracyColor(exercise.formAccuracy))
+                .frame(width: 5)
+                .padding(.vertical, 12)
+                .padding(.leading, 4)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(exercise.exerciseName)
+            VStack(spacing: 12) {
+                HStack(spacing: 14) {
+                    Image(systemName: exercise.iconName)
+                        .font(.system(size: AppLayout.iconSize))
+                        .foregroundStyle(PTDetailColors.accent)
+                        .frame(width: 44, height: 44)
+                        .background(PTDetailColors.accent.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(exercise.exerciseName)
+                            .font(AppFonts.bodyBold)
+                            .foregroundStyle(AppColors.textPrimary)
+
+                        Text("\(exercise.completedReps)/\(exercise.targetReps) reps completed")
+                            .font(AppFonts.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+
+                    Spacer()
+
+                    Text(String(format: "%.0f%%", exercise.formAccuracy))
                         .font(AppFonts.bodyBold)
-                        .foregroundStyle(AppColors.textPrimary)
-
-                    Text("\(exercise.completedReps)/\(exercise.targetReps) reps completed")
-                        .font(AppFonts.caption)
-                        .foregroundStyle(AppColors.textSecondary)
+                        .foregroundStyle(accuracyColor(exercise.formAccuracy))
                 }
 
-                Spacer()
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(PTDetailColors.background)
+                            .frame(height: 6)
 
-                Text(String(format: "%.0f%%", exercise.formAccuracy))
-                    .font(AppFonts.bodyBold)
-                    .foregroundStyle(accuracyColor(exercise.formAccuracy))
-            }
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(AppColors.surface)
-                        .frame(height: 6)
-
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(accuracyColor(exercise.formAccuracy))
-                        .frame(width: geo.size.width * exercise.formAccuracy / 100, height: 6)
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(accuracyColor(exercise.formAccuracy))
+                            .frame(width: geo.size.width * exercise.formAccuracy / 100, height: 6)
+                    }
                 }
+                .frame(height: 6)
             }
-            .frame(height: 6)
+            .padding(AppLayout.cardPadding)
         }
-        .padding(AppLayout.cardPadding)
         .background(
             RoundedRectangle(cornerRadius: AppLayout.cardRadius)
-                .fill(AppColors.cardWhite)
+                .fill(PTDetailColors.cardBackground)
                 .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
         )
+        .clipShape(RoundedRectangle(cornerRadius: AppLayout.cardRadius))
     }
 
     private var overallCard: some View {

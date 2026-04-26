@@ -1,12 +1,22 @@
 import SwiftUI
 
+private enum PTColors {
+    static let accent = Color(hex: "3D5A80")
+    static let accentLight = Color(hex: "5B7FB5")
+    static let background = Color(hex: "F0F2F5")
+    static let cardBackground = Color.white
+    static let bannerGradientStart = Color(hex: "3D5A80")
+    static let bannerGradientEnd = Color(hex: "2C3E6B")
+    static let sectionHeader = Color(hex: "3D5A80")
+}
+
 struct PTDashboardView: View {
     @StateObject private var viewModel = PhysiotherapistDashboardViewModel()
     @State private var appeared = false
 
     var body: some View {
         ZStack {
-            AppColors.background.ignoresSafeArea()
+            PTColors.background.ignoresSafeArea()
 
             if viewModel.isLoadingHealth && viewModel.healthMetrics == nil {
                 loadingState
@@ -17,9 +27,14 @@ struct PTDashboardView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text("Patient Dashboard")
-                    .font(AppFonts.bodyBold)
-                    .foregroundStyle(AppColors.textPrimary)
+                HStack(spacing: 8) {
+                    Image(systemName: "stethoscope")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(PTColors.accent)
+                    Text("Physiotherapist Dashboard")
+                        .font(AppFonts.bodyBold)
+                        .foregroundStyle(PTColors.accent)
+                }
             }
         }
         .task {
@@ -29,9 +44,9 @@ struct PTDashboardView: View {
 
     private var loadingState: some View {
         VStack(spacing: 24) {
-            Image(systemName: "heart.text.clipboard.fill")
+            Image(systemName: "stethoscope")
                 .font(.system(size: 64))
-                .foregroundStyle(AppColors.secondary)
+                .foregroundStyle(PTColors.accent)
                 .symbolEffect(.pulse, options: .repeating)
 
             Text("Loading patient data...")
@@ -43,9 +58,8 @@ struct PTDashboardView: View {
     private var dashboardContent: some View {
         ScrollView {
             VStack(spacing: 20) {
-                Spacer().frame(height: 8)
-
-                patientHeader
+                ptBanner
+                patientInfoCard
                 routineManagementSection
                 healthMetricsSection
                 readinessCard
@@ -67,22 +81,79 @@ struct PTDashboardView: View {
         }
     }
 
-    // MARK: - Patient Header
+    // MARK: - PT Banner
 
-    private var patientHeader: some View {
+    private var ptBanner: some View {
         HStack(spacing: 16) {
-            Image(systemName: viewModel.patient.avatarSystemImage)
-                .font(.system(size: 56))
-                .foregroundStyle(AppColors.primary)
+            ZStack {
+                Circle()
+                    .fill(PTColors.accent.opacity(0.15))
+                    .frame(width: 56, height: 56)
+                Image(systemName: "stethoscope")
+                    .font(.system(size: 26))
+                    .foregroundStyle(PTColors.accent)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
+                Text("Dr. Sarah Mitchell")
+                    .font(AppFonts.heading)
+                    .foregroundStyle(.white)
+                Text("Physiotherapist")
+                    .font(AppFonts.caption)
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("PT View")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(.white.opacity(0.25)))
+            }
+        }
+        .padding(AppLayout.cardPadding)
+        .background(
+            RoundedRectangle(cornerRadius: AppLayout.cardRadius)
+                .fill(
+                    LinearGradient(
+                        colors: [PTColors.bannerGradientStart, PTColors.bannerGradientEnd],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .shadow(color: PTColors.accent.opacity(0.3), radius: 12, y: 6)
+        )
+    }
+
+    // MARK: - Patient Info Card
+
+    private var patientInfoCard: some View {
+        HStack(spacing: 16) {
+            accentBar(color: PTColors.accentLight)
+
+            Image(systemName: viewModel.patient.avatarSystemImage)
+                .font(.system(size: 44))
+                .foregroundStyle(PTColors.accent)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Patient")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(PTColors.accent)
+                    .textCase(.uppercase)
+                    .kerning(1.2)
+
                 Text(viewModel.patient.name)
-                    .font(AppFonts.title)
+                    .font(AppFonts.heading)
                     .foregroundStyle(AppColors.textPrimary)
 
-                Text("Age \(viewModel.patient.age)")
-                    .font(AppFonts.bodyBold)
-                    .foregroundStyle(AppColors.textSecondary)
+                HStack(spacing: 12) {
+                    Label("Age \(viewModel.patient.age)", systemImage: "person.fill")
+                        .font(AppFonts.caption)
+                        .foregroundStyle(AppColors.textSecondary)
+                }
 
                 Text(viewModel.patient.condition)
                     .font(AppFonts.caption)
@@ -95,7 +166,7 @@ struct PTDashboardView: View {
         .padding(AppLayout.cardPadding)
         .background(
             RoundedRectangle(cornerRadius: AppLayout.cardRadius)
-                .fill(AppColors.cardWhite)
+                .fill(PTColors.cardBackground)
                 .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
         )
     }
@@ -104,15 +175,13 @@ struct PTDashboardView: View {
 
     private var routineManagementSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Exercise Routine")
-                .font(AppFonts.heading)
-                .foregroundStyle(AppColors.textPrimary)
+            sectionHeader(title: "Exercise Routine", icon: "list.clipboard.fill")
 
             VStack(spacing: 16) {
                 if viewModel.routineStore.hasAssignedRoutine {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 10) {
-                            Image(systemName: "checkmark.circle.fill")
+                            Image(systemName: "checkmark.seal.fill")
                                 .font(.system(size: 20))
                                 .foregroundStyle(AppColors.success)
                             Text("Routine assigned — \(viewModel.routineStore.assignedExercises.count) exercises")
@@ -126,7 +195,7 @@ struct PTDashboardView: View {
                                 HStack(spacing: 12) {
                                     Image(systemName: exercise.iconName)
                                         .font(.system(size: 18))
-                                        .foregroundStyle(AppColors.primary)
+                                        .foregroundStyle(PTColors.accent)
                                         .frame(width: 32)
 
                                     Text(exercise.name)
@@ -145,10 +214,10 @@ struct PTDashboardView: View {
                     }
                 } else {
                     HStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.circle")
+                        Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 20))
                             .foregroundStyle(AppColors.accent)
-                        Text("No routine assigned yet")
+                        Text("No routine assigned to patient")
                             .font(AppFonts.body)
                             .foregroundStyle(AppColors.textSecondary)
                         Spacer()
@@ -167,9 +236,9 @@ struct PTDashboardView: View {
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: AppLayout.buttonHeight)
-                    .background(AppColors.primary)
+                    .background(PTColors.accent)
                     .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
-                    .shadow(color: AppColors.primary.opacity(0.3), radius: 8, y: 4)
+                    .shadow(color: PTColors.accent.opacity(0.3), radius: 8, y: 4)
                 }
                 .simultaneousGesture(TapGesture().onEnded {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -178,7 +247,7 @@ struct PTDashboardView: View {
             .padding(AppLayout.cardPadding)
             .background(
                 RoundedRectangle(cornerRadius: AppLayout.cardRadius)
-                    .fill(AppColors.cardWhite)
+                    .fill(PTColors.cardBackground)
                     .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
             )
         }
@@ -189,9 +258,7 @@ struct PTDashboardView: View {
     private var healthMetricsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Today's Health Snapshot")
-                    .font(AppFonts.heading)
-                    .foregroundStyle(AppColors.textPrimary)
+                sectionHeader(title: "Patient Health Snapshot", icon: "heart.text.clipboard.fill")
 
                 Spacer()
 
@@ -204,47 +271,17 @@ struct PTDashboardView: View {
 
             if let metrics = viewModel.healthMetrics {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
-                    HealthMetricCard(
-                        icon: "bed.double.fill",
-                        label: "Sleep",
-                        value: metrics.formattedSleep ?? "—",
-                        color: sleepColor(metrics.sleepHours),
-                        progress: (metrics.sleepHours ?? 0) / 9.0
-                    )
+                    ptMetricCard(icon: "bed.double.fill", label: "Sleep", value: metrics.formattedSleep ?? "—", color: sleepColor(metrics.sleepHours), progress: (metrics.sleepHours ?? 0) / 9.0)
 
-                    HealthMetricCard(
-                        icon: "heart.fill",
-                        label: "Heart Rate",
-                        value: metrics.formattedHeartRate ?? "—",
-                        color: heartRateColor(metrics.restingHeartRate),
-                        progress: heartRateProgress(metrics.restingHeartRate)
-                    )
+                    ptMetricCard(icon: "heart.fill", label: "Heart Rate", value: metrics.formattedHeartRate ?? "—", color: heartRateColor(metrics.restingHeartRate), progress: heartRateProgress(metrics.restingHeartRate))
 
-                    HealthMetricCard(
-                        icon: "flame.fill",
-                        label: "Active Energy",
-                        value: metrics.formattedEnergy ?? "—",
-                        color: energyColor(metrics.activeEnergyKcal),
-                        progress: (metrics.activeEnergyKcal ?? 0) / 300.0
-                    )
+                    ptMetricCard(icon: "flame.fill", label: "Active Energy", value: metrics.formattedEnergy ?? "—", color: energyColor(metrics.activeEnergyKcal), progress: (metrics.activeEnergyKcal ?? 0) / 300.0)
 
-                    HealthMetricCard(
-                        icon: "figure.walk",
-                        label: "Steps",
-                        value: metrics.formattedSteps ?? "—",
-                        color: stepsColor(metrics.stepCount),
-                        progress: (metrics.stepCount ?? 0) / 6000.0
-                    )
+                    ptMetricCard(icon: "figure.walk", label: "Steps", value: metrics.formattedSteps ?? "—", color: stepsColor(metrics.stepCount), progress: (metrics.stepCount ?? 0) / 6000.0)
                 }
 
                 if let hrv = metrics.formattedHRV {
-                    HealthMetricCard(
-                        icon: "waveform.path.ecg",
-                        label: "Heart Rate Variability",
-                        value: hrv,
-                        color: AppColors.primary,
-                        progress: (metrics.heartRateVariability ?? 0) / 60.0
-                    )
+                    ptMetricCard(icon: "waveform.path.ecg", label: "Heart Rate Variability", value: hrv, color: PTColors.accent, progress: (metrics.heartRateVariability ?? 0) / 60.0)
                 }
             } else {
                 noDataCard(message: "Health data not available. Ensure the patient has granted HealthKit permissions.")
@@ -257,41 +294,42 @@ struct PTDashboardView: View {
     private var readinessCard: some View {
         Group {
             if let metrics = viewModel.healthMetrics {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 12) {
-                        Image(systemName: metrics.level.iconName)
-                            .font(.system(size: 28))
-                            .foregroundStyle(readinessColor(metrics.level))
-                            .symbolEffect(.pulse, options: .repeating.speed(0.5))
+                HStack(spacing: 0) {
+                    accentBar(color: readinessColor(metrics.level))
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Readiness Assessment")
-                                .font(AppFonts.bodyBold)
-                                .foregroundStyle(AppColors.textPrimary)
-                            Text(metrics.level.displayLabel)
-                                .font(AppFonts.caption)
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 12) {
+                            Image(systemName: metrics.level.iconName)
+                                .font(.system(size: 28))
                                 .foregroundStyle(readinessColor(metrics.level))
+                                .symbolEffect(.pulse, options: .repeating.speed(0.5))
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Readiness Assessment")
+                                    .font(AppFonts.bodyBold)
+                                    .foregroundStyle(AppColors.textPrimary)
+                                Text(metrics.level.displayLabel)
+                                    .font(AppFonts.caption)
+                                    .foregroundStyle(readinessColor(metrics.level))
+                            }
+
+                            Spacer()
                         }
 
-                        Spacer()
+                        Text(metrics.explanation)
+                            .font(AppFonts.body)
+                            .foregroundStyle(AppColors.textPrimary)
+                            .lineSpacing(6)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-
-                    Text(metrics.explanation)
-                        .font(AppFonts.doctorsNote)
-                        .foregroundStyle(AppColors.textPrimary)
-                        .lineSpacing(6)
-                        .fixedSize(horizontal: false, vertical: true)
+                    .padding(AppLayout.cardPadding)
                 }
-                .padding(AppLayout.cardPadding)
                 .background(
                     RoundedRectangle(cornerRadius: AppLayout.cardRadius)
-                        .fill(AppColors.cardWhite)
+                        .fill(PTColors.cardBackground)
                         .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
                 )
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppLayout.cardRadius)
-                        .stroke(readinessColor(metrics.level).opacity(0.2), lineWidth: 1.5)
-                )
+                .clipShape(RoundedRectangle(cornerRadius: AppLayout.cardRadius))
             }
         }
     }
@@ -300,16 +338,14 @@ struct PTDashboardView: View {
 
     private var weeklyOverview: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("This Week")
-                .font(AppFonts.heading)
-                .foregroundStyle(AppColors.textPrimary)
+            sectionHeader(title: "This Week", icon: "chart.bar.fill")
 
             HStack(spacing: 14) {
                 weekStat(
                     icon: "calendar.badge.checkmark",
                     value: "\(viewModel.sessionStore.sessionsThisWeek)",
                     label: "Sessions",
-                    color: AppColors.primary
+                    color: PTColors.accent
                 )
 
                 weekStat(
@@ -349,7 +385,7 @@ struct PTDashboardView: View {
         .padding(.vertical, 16)
         .background(
             RoundedRectangle(cornerRadius: AppLayout.cardRadius)
-                .fill(AppColors.cardWhite)
+                .fill(PTColors.cardBackground)
                 .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
         )
     }
@@ -358,9 +394,7 @@ struct PTDashboardView: View {
 
     private var recentSessionsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Recent Sessions")
-                .font(AppFonts.heading)
-                .foregroundStyle(AppColors.textPrimary)
+            sectionHeader(title: "Recent Sessions", icon: "clock.arrow.circlepath")
 
             if viewModel.sessionStore.sessions.isEmpty {
                 noDataCard(message: "No exercise sessions recorded yet.")
@@ -377,63 +411,125 @@ struct PTDashboardView: View {
     }
 
     private func sessionCard(_ session: ExerciseSession) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(session.formattedDate)
-                        .font(AppFonts.bodyBold)
-                        .foregroundStyle(AppColors.textPrimary)
-                    Text("\(session.formattedTime)  ·  \(session.formattedDuration) min")
+        HStack(spacing: 0) {
+            accentBar(color: accuracyColor(session.overallAccuracy))
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(session.formattedDate)
+                            .font(AppFonts.bodyBold)
+                            .foregroundStyle(AppColors.textPrimary)
+                        Text("\(session.formattedTime)  ·  \(session.formattedDuration) min")
+                            .font(AppFonts.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: session.readinessLevel.iconName)
+                        .font(.system(size: 20))
+                        .foregroundStyle(readinessColor(session.readinessLevel))
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AppColors.textSecondary.opacity(0.5))
+                }
+
+                HStack(spacing: 16) {
+                    Label("\(session.exercises.count) exercises", systemImage: "figure.strengthtraining.functional")
+                        .font(AppFonts.caption)
+                        .foregroundStyle(AppColors.textSecondary)
+
+                    Label("\(session.totalReps) reps", systemImage: "repeat")
                         .font(AppFonts.caption)
                         .foregroundStyle(AppColors.textSecondary)
                 }
 
-                Spacer()
+                HStack(spacing: 10) {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(PTColors.background)
+                                .frame(height: 8)
 
-                Image(systemName: session.readinessLevel.iconName)
-                    .font(.system(size: 20))
-                    .foregroundStyle(readinessColor(session.readinessLevel))
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppColors.textSecondary.opacity(0.5))
-            }
-
-            HStack(spacing: 16) {
-                Label("\(session.exercises.count) exercises", systemImage: "figure.strengthtraining.functional")
-                    .font(AppFonts.caption)
-                    .foregroundStyle(AppColors.textSecondary)
-
-                Label("\(session.totalReps) reps", systemImage: "repeat")
-                    .font(AppFonts.caption)
-                    .foregroundStyle(AppColors.textSecondary)
-            }
-
-            HStack(spacing: 10) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(AppColors.surface)
-                            .frame(height: 8)
-
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(accuracyColor(session.overallAccuracy))
-                            .frame(width: geo.size.width * session.overallAccuracy / 100, height: 8)
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(accuracyColor(session.overallAccuracy))
+                                .frame(width: geo.size.width * session.overallAccuracy / 100, height: 8)
+                        }
                     }
-                }
-                .frame(height: 8)
+                    .frame(height: 8)
 
-                Text(String(format: "%.0f%%", session.overallAccuracy))
-                    .font(AppFonts.bodyBold)
-                    .foregroundStyle(accuracyColor(session.overallAccuracy))
-                    .frame(width: 50, alignment: .trailing)
+                    Text(String(format: "%.0f%%", session.overallAccuracy))
+                        .font(AppFonts.bodyBold)
+                        .foregroundStyle(accuracyColor(session.overallAccuracy))
+                        .frame(width: 50, alignment: .trailing)
+                }
             }
+            .padding(AppLayout.cardPadding)
         }
-        .padding(AppLayout.cardPadding)
         .background(
             RoundedRectangle(cornerRadius: AppLayout.cardRadius)
-                .fill(AppColors.cardWhite)
+                .fill(PTColors.cardBackground)
                 .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppLayout.cardRadius))
+    }
+
+    // MARK: - Shared Components
+
+    private func sectionHeader(title: String, icon: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(PTColors.accent)
+            Text(title)
+                .font(AppFonts.heading)
+                .foregroundStyle(PTColors.sectionHeader)
+        }
+    }
+
+    private func accentBar(color: Color) -> some View {
+        RoundedRectangle(cornerRadius: 3)
+            .fill(color)
+            .frame(width: 5)
+            .padding(.vertical, 12)
+            .padding(.leading, 4)
+    }
+
+    private func ptMetricCard(icon: String, label: String, value: String, color: Color, progress: Double) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 20))
+                    .foregroundStyle(color)
+                Spacer()
+                Text(value)
+                    .font(AppFonts.bodyBold)
+                    .foregroundStyle(AppColors.textPrimary)
+            }
+
+            Text(label)
+                .font(.system(size: 13, weight: .regular, design: .rounded))
+                .foregroundStyle(AppColors.textSecondary)
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(PTColors.background)
+                        .frame(height: 5)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(color)
+                        .frame(width: geo.size.width * min(progress, 1.0), height: 5)
+                }
+            }
+            .frame(height: 5)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(PTColors.cardBackground)
+                .shadow(color: AppShadow.color, radius: 6, x: 0, y: 2)
         )
     }
 
@@ -453,7 +549,7 @@ struct PTDashboardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: AppLayout.cardRadius)
-                .fill(AppColors.surface)
+                .fill(PTColors.background)
         )
     }
 
@@ -466,13 +562,13 @@ struct PTDashboardView: View {
 
     private func sleepColor(_ hours: Double?) -> Color {
         guard let h = hours else { return AppColors.textSecondary }
-        return h < HealthThresholds.lowSleepHours ? AppColors.secondary : AppColors.primary
+        return h < HealthThresholds.lowSleepHours ? AppColors.secondary : PTColors.accent
     }
 
     private func heartRateColor(_ hr: Double?) -> Color {
         guard let hr = hr else { return AppColors.textSecondary }
         if hr > HealthThresholds.elevatedHeartRate { return AppColors.secondary }
-        if hr < 60 { return AppColors.primary }
+        if hr < 60 { return PTColors.accent }
         return AppColors.success
     }
 
