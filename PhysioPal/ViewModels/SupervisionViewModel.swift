@@ -13,7 +13,8 @@ final class SupervisionViewModel: ObservableObject {
     @Published private(set) var activePoseSource: PoseSourceMode = .melange
 
     private let poseProvider: PoseProviderProtocol
-    private let evaluator = ExerciseEvaluator()
+    private let evaluator = ExerciseEvaluator(requiredConsecutiveFrames: 2)
+    private let poseSmoothing = PoseSmoothing(alpha: 0.4, windowSize: 5)
     private let sessionStartTime = Date()
 
     private var lastEvaluationCorrect = true
@@ -32,7 +33,7 @@ final class SupervisionViewModel: ObservableObject {
     private var lastRepAt: TimeInterval = 0
     private let squatRepDetector = SquatRepDetector()
     private let verticalKneeRepDetector = VerticalKneeHysteresisRepDetector()
-    private let poseSmoothing = PoseSmoothing(alpha: 0.4, windowSize: 5)
+    private let armRaiseRepDetector = ArmRaiseRepDetector()
     private let targetProcessingInterval: TimeInterval = 1.0 / 15.0
     private let voiceCueCooldown: TimeInterval = 1.8
     private let minRepInterval: TimeInterval = 0.35
@@ -141,8 +142,6 @@ final class SupervisionViewModel: ObservableObject {
         }()
         let shouldEvaluateForm = poseTrustedForForm && (useSquatAngleReps ? isDownForForm : true)
 
-        // Evaluate form only during the active squat/down phase.
-        // Standing frames should not count as posture failures.
         if shouldEvaluateForm {
             repSawTrustedDownFrame = true
             repTotalDownFrames += 1
@@ -187,9 +186,9 @@ final class SupervisionViewModel: ObservableObject {
             trustedDownFrameStreak = 0
             trustedUpFrameStreak = 0
             if lowConfidenceFrameStreak >= 5 {
-                // Drop stale detector state after sustained noisy tracking.
                 squatRepDetector.reset()
                 verticalKneeRepDetector.reset()
+                armRaiseRepDetector.reset()
             }
         }
 
@@ -203,6 +202,10 @@ final class SupervisionViewModel: ObservableObject {
             if useSquatAngleReps, let a = kneeAngle {
                 return squatRepDetector.update(kneeAngle: a)
             }
+            if Self.usesArmRaiseRepCounting(exercise),
+               let wristY = smoothedFrame.landmark(for: .leftWrist)?.position.y {
+                return armRaiseRepDetector.update(wristY: wristY)
+            }
             return verticalKneeRepDetector.update(kneeY: kneeY)
         }()
 
@@ -215,10 +218,13 @@ final class SupervisionViewModel: ObservableObject {
     }
 
     private static func usesSquatStyleRepCounting(_ exercise: Exercise) -> Bool {
-        exercise.id == "deep-squat" || exercise.id == "chair-squat"
+        ["deep-squat", "chair-squat", "standing-hamstring-curl", "sit-to-stand"].contains(exercise.id)
     }
 
-    /// Prefer the leg side with stronger landmark confidence (workout-buddy picks a visible knee).
+    private static func usesArmRaiseRepCounting(_ exercise: Exercise) -> Bool {
+        exercise.id == "seated-shoulder-flexion"
+    }
+
     private func bestKneeAngleDegrees(from frame: PoseFrame) -> Double? {
         let left = frame.angleBetween(.leftHip, .leftKnee, .leftAnkle)
         let right = frame.angleBetween(.rightHip, .rightKnee, .rightAnkle)
@@ -276,6 +282,7 @@ final class SupervisionViewModel: ObservableObject {
             lastVoiceCueAt = 0
             squatRepDetector.reset()
             verticalKneeRepDetector.reset()
+            armRaiseRepDetector.reset()
             evaluator.reset()
             poseSmoothing.reset()
             escalationLockedExerciseIndex = nil

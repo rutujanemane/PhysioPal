@@ -122,6 +122,85 @@ extension Exercise {
                     correctionMessage: "Let's stay tall in the chair and keep your posture relaxed."
                 )
             ]
+        ),
+        Exercise(
+            id: "standing-hamstring-curl",
+            name: "Standing Hamstring Curls",
+            description: "Hold a chair for balance. Curl one heel up toward your body, then lower it slowly. Keep your upper body steady.",
+            iconName: "figure.flexibility",
+            standardReps: 12,
+            reducedReps: 8,
+            easierVariantID: nil,
+            formRules: [
+                FormRule(
+                    jointTriplet: (.leftShoulder, .leftHip, .leftKnee),
+                    acceptableRange: 130...180,
+                    correctionMessage: "You're doing great. Try to keep your upper body steady."
+                ),
+                FormRule(
+                    jointTriplet: (.leftHip, .leftKnee, .leftAnkle),
+                    acceptableRange: 20...120,
+                    correctionMessage: "Nice work. Try bringing your heel a little higher."
+                )
+            ]
+        ),
+        Exercise(
+            id: "seated-hip-march",
+            name: "Seated Hip Marching",
+            description: "Sit tall in a sturdy chair. Lift one knee at a time toward your chest, then lower it gently. Alternate legs at a comfortable pace.",
+            iconName: "figure.walk",
+            standardReps: 12,
+            reducedReps: 8,
+            easierVariantID: nil,
+            formRules: [
+                FormRule(
+                    jointTriplet: (.leftShoulder, .leftHip, .leftKnee),
+                    acceptableRange: 90...180,
+                    correctionMessage: "You're doing well. Try to sit up straight as you march."
+                )
+            ]
+        ),
+        Exercise(
+            id: "sit-to-stand",
+            name: "Sit-to-Stand",
+            description: "Start seated in a chair. Stand up without using your hands, then sit back down with control. Take your time with each rep.",
+            iconName: "figure.stand",
+            standardReps: 10,
+            reducedReps: 6,
+            easierVariantID: "chair-squat",
+            formRules: [
+                FormRule(
+                    jointTriplet: (.leftHip, .leftKnee, .leftAnkle),
+                    acceptableRange: 55...130,
+                    correctionMessage: "Nice effort. Try to lower down steadily into the chair."
+                ),
+                FormRule(
+                    jointTriplet: (.leftShoulder, .leftHip, .leftKnee),
+                    acceptableRange: 40...120,
+                    correctionMessage: "Let's try to keep your chest lifted as you stand."
+                )
+            ]
+        ),
+        Exercise(
+            id: "seated-shoulder-flexion",
+            name: "Seated Shoulder Flexion",
+            description: "Sit tall in a chair. Raise both arms forward and up to shoulder height, keeping them straight, then lower slowly.",
+            iconName: "figure.arms.open",
+            standardReps: 12,
+            reducedReps: 8,
+            easierVariantID: nil,
+            formRules: [
+                FormRule(
+                    jointTriplet: (.leftShoulder, .leftElbow, .leftWrist),
+                    acceptableRange: 130...180,
+                    correctionMessage: "Nice effort. Try keeping your arm a bit straighter as you lift."
+                ),
+                FormRule(
+                    jointTriplet: (.leftShoulder, .leftHip, .leftKnee),
+                    acceptableRange: 90...180,
+                    correctionMessage: "Let's stay sitting tall as you raise your arms."
+                )
+            ]
         )
     ]
 

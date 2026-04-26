@@ -25,24 +25,29 @@ final class ContextEngineViewModel: ObservableObject {
         }
     }
 
-    private func buildRoutine(for readiness: HealthReadiness) -> ExerciseRoutine {
+    private func buildRoutine(for readiness: HealthReadiness) -> ExerciseRoutine? {
+        let store = RoutineStore.shared
+        guard store.hasAssignedRoutine else { return nil }
+
         let shouldReduce = readiness.level.shouldReduceRoutine
         var routineExercises: [RoutineExercise] = []
 
-        for baseExercise in Exercise.library {
+        for item in store.assignedExercises {
+            guard let baseExercise = Exercise.find(byID: item.exerciseID) else { continue }
+
             let exercise: Exercise
             let reps: Int
 
             if shouldReduce, let variantID = baseExercise.easierVariantID,
                let variant = Exercise.find(byID: variantID) {
                 exercise = variant
-                reps = variant.reducedReps
+                reps = min(item.targetReps, variant.reducedReps)
             } else if shouldReduce {
                 exercise = baseExercise
-                reps = baseExercise.reducedReps
+                reps = min(item.targetReps, baseExercise.reducedReps)
             } else {
                 exercise = baseExercise
-                reps = baseExercise.standardReps
+                reps = item.targetReps
             }
 
             routineExercises.append(
