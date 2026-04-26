@@ -4,8 +4,10 @@ import Foundation
 
 protocol PoseProviderProtocol: AnyObject {
     var previewSession: AVCaptureSession? { get }
+    var activeCameraPosition: AVCaptureDevice.Position { get }
     func start(onFrame: @escaping (PoseFrame) -> Void)
     func stop()
+    func switchCamera(position: AVCaptureDevice.Position)
 }
 
 enum PoseSourceMode: String {
@@ -20,6 +22,8 @@ protocol SwitchablePoseProvider: PoseProviderProtocol {
 
 extension PoseProviderProtocol {
     var previewSession: AVCaptureSession? { nil }
+    var activeCameraPosition: AVCaptureDevice.Position { .back }
+    func switchCamera(position: AVCaptureDevice.Position) {}
 }
 
 enum PoseScenario {

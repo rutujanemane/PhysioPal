@@ -6,6 +6,7 @@ final class TestingPoseProvider: SwitchablePoseProvider {
     private let visionProvider = VisionPoseProvider()
     private var onFrame: ((PoseFrame) -> Void)?
     private(set) var activeSource: PoseSourceMode
+    private(set) var activeCameraPosition: AVCaptureDevice.Position = .back
 
     init(defaultSource: PoseSourceMode = .melange) {
         self.activeSource = defaultSource
@@ -39,6 +40,12 @@ final class TestingPoseProvider: SwitchablePoseProvider {
         if let onFrame {
             activeProvider.start(onFrame: onFrame)
         }
+    }
+
+    func switchCamera(position: AVCaptureDevice.Position) {
+        activeCameraPosition = position
+        melangeProvider.switchCamera(position: position)
+        visionProvider.switchCamera(position: position)
     }
 
     private var activeProvider: PoseProviderProtocol {

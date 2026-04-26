@@ -98,41 +98,24 @@ struct ExerciseSessionView: View {
                                 }
                             }
                     }
-                    .padding(.horizontal, AppLayout.screenPadding)
-                    .padding(.top, 0)
-
-                    HStack(spacing: 10) {
+                    .overlay(alignment: .topTrailing) {
                         Button {
-                            viewModel.switchPoseSourceForTesting(.melange)
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            viewModel.toggleCameraPosition()
                             previewSessionToken += 1
                         } label: {
-                            Text("Melange")
-                                .font(AppFonts.bodyBold)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(
-                                    Capsule()
-                                        .fill(viewModel.activePoseSource == .melange ? AppColors.primary : AppColors.textPrimary.opacity(0.2))
-                                )
-                                .foregroundStyle(.white)
+                            Image(systemName: "arrow.triangle.2.circlepath.camera.fill")
+                                .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 54, height: 54)
+                            .background(Color.black.opacity(0.55))
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
                         }
-
-                        Button {
-                            viewModel.switchPoseSourceForTesting(.vision)
-                            previewSessionToken += 1
-                        } label: {
-                            Text("Vision")
-                                .font(AppFonts.bodyBold)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(
-                                    Capsule()
-                                        .fill(viewModel.activePoseSource == .vision ? AppColors.primary : AppColors.textPrimary.opacity(0.2))
-                                )
-                                .foregroundStyle(.white)
-                        }
+                        .padding(12)
+                        .accessibilityLabel("Switch camera between front and back")
                     }
                     .padding(.horizontal, AppLayout.screenPadding)
+                    .padding(.top, 0)
 
                     Button {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -212,6 +195,11 @@ struct ExerciseSessionView: View {
                 viewModel.markEscalationHandled()
                 endSession(exit: .escalation)
             }
+        }
+        .onReceive(viewModel.$fallRiskDetected) { detected in
+            guard detected else { return }
+            guard viewModel.consumeFallRiskEvent() else { return }
+            endSession(exit: .escalation)
         }
     }
 

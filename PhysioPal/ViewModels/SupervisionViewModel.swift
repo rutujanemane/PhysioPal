@@ -11,6 +11,8 @@ final class SupervisionViewModel: ObservableObject {
     @Published private(set) var feedbackMessage: String?
     @Published private(set) var repPulseToken: Int = 0
     @Published private(set) var activePoseSource: PoseSourceMode = .melange
+    @Published private(set) var activeCameraPosition: AVCaptureDevice.Position = .back
+    @Published private(set) var fallRiskDetected = false
 
     private let poseProvider: PoseProviderProtocol
     private let evaluator = ExerciseEvaluator(requiredConsecutiveFrames: 2)
@@ -39,6 +41,9 @@ final class SupervisionViewModel: ObservableObject {
     private let voiceCueCooldown: TimeInterval = 1.8
     private let minRepInterval: TimeInterval = 0.35
     private let exerciseTransitionPauseNanos: UInt64 = 2_500_000_000
+    private var lastHipCenterY: CGFloat?
+    private var lastHipTimestamp: TimeInterval?
+    private var fallCooldownUntil: TimeInterval = 0
 
     init(routine: ExerciseRoutine, poseProvider: PoseProviderProtocol = TestingPoseProvider(defaultSource: .melange)) {
         self.routineExercises = routine.exercises
@@ -46,6 +51,7 @@ final class SupervisionViewModel: ObservableObject {
         if let switchable = poseProvider as? SwitchablePoseProvider {
             activePoseSource = switchable.activeSource
         }
+        activeCameraPosition = poseProvider.activeCameraPosition
     }
 
     var previewSession: AVCaptureSession? {
@@ -86,6 +92,12 @@ final class SupervisionViewModel: ObservableObject {
         print("[SupervisionViewModel][H8] switched source to \(activePoseSource.rawValue)")
     }
 
+    func toggleCameraPosition() {
+        let next: AVCaptureDevice.Position = activeCameraPosition == .back ? .front : .back
+        poseProvider.switchCamera(position: next)
+        activeCameraPosition = poseProvider.activeCameraPosition
+    }
+
     func markEscalationHandled() {
         if let idx = activeExerciseIndex {
             routineExercises[idx].consecutiveFailures = 0
@@ -98,6 +110,12 @@ final class SupervisionViewModel: ObservableObject {
         guard let idx = activeExerciseIndex else { return false }
         guard escalationLockedExerciseIndex != idx else { return false }
         return routineExercises[idx].consecutiveFailures >= HealthThresholds.consecutiveFailuresForEscalation
+    }
+
+    func consumeFallRiskEvent() -> Bool {
+        guard fallRiskDetected else { return false }
+        fallRiskDetected = false
+        return true
     }
 
     func buildSummary() -> SessionSummary {
@@ -241,6 +259,7 @@ final class SupervisionViewModel: ObservableObject {
             lastRepAt = now
             registerRep(for: idx)
         }
+        evaluateFallRisk(frame: smoothedFrame, now: now)
     }
 
     private static func usesSquatStyleRepCounting(_ exercise: Exercise) -> Bool {
@@ -287,6 +306,35 @@ final class SupervisionViewModel: ObservableObject {
         let vals = joints.compactMap { frame.landmark(for: $0)?.confidence }
         guard !vals.isEmpty else { return 0 }
         return vals.reduce(0, +) / Float(vals.count)
+    }
+
+    private func evaluateFallRisk(frame: PoseFrame, now: TimeInterval) {
+        guard now >= fallCooldownUntil else { return }
+        let hips = [frame.landmark(for: .leftHip), frame.landmark(for: .rightHip)].compactMap { $0 }
+        let shoulders = [frame.landmark(for: .leftShoulder), frame.landmark(for: .rightShoulder)].compactMap { $0 }
+        guard !hips.isEmpty, !shoulders.isEmpty else { return }
+        let hipY = hips.map(\.position.y).reduce(0, +) / CGFloat(hips.count)
+        let shoulderY = shoulders.map(\.position.y).reduce(0, +) / CGFloat(shoulders.count)
+
+        defer {
+            lastHipCenterY = hipY
+            lastHipTimestamp = now
+        }
+
+        guard let previousHipY = lastHipCenterY, let previousTimestamp = lastHipTimestamp else {
+            return
+        }
+
+        let deltaTime = now - previousTimestamp
+        let deltaY = hipY - previousHipY
+        let suddenDrop = deltaTime > 0.05 && deltaTime < 0.45 && deltaY > 0.18
+        let lowPosture = hipY > 0.76 && shoulderY > 0.56
+        guard suddenDrop && lowPosture else { return }
+
+        fallRiskDetected = true
+        feedbackMessage = "It looks like you may need support. Let's get help."
+        VoiceGuidanceService.shared.speak("It looks like you may need support. Let's get help.")
+        fallCooldownUntil = now + 8
     }
 
     private func registerRep(for idx: Int) {
@@ -377,5 +425,7 @@ final class SupervisionViewModel: ObservableObject {
         poseSmoothing.reset()
         escalationLockedExerciseIndex = nil
         isAdvancingExercise = false
+        lastHipCenterY = nil
+        lastHipTimestamp = nil
     }
 }
