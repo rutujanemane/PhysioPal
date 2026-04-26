@@ -1,11 +1,11 @@
 import Foundation
 
-/// NDJSON append for debug-mode verification (session `998d56`).
+/// NDJSON append for debug-mode verification (session `626697`).
 enum AgentDebugLog {
-    private static let path = "/Users/rutujanemane/Documents/SJSU/PhysioPal/.cursor/debug-998d56.log"
+    private static let path = "/Users/rutujanemane/Documents/SJSU/PhysioPal/.cursor/debug-626697.log"
 
     private struct Line: Encodable {
-        let sessionId = "998d56"
+        let sessionId = "626697"
         var runId: String
         var hypothesisId: String
         var location: String

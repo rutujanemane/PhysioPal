@@ -10,7 +10,6 @@ struct ExerciseSessionView: View {
 
     @StateObject private var viewModel: SupervisionViewModel
     @State private var captureSession = AVCaptureSession()
-    @State private var activePreviewSession: AVCaptureSession?
     @State private var previewSessionToken: Int = 0
     @State private var repScale: CGFloat = 1.0
 
@@ -31,7 +30,7 @@ struct ExerciseSessionView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let cameraSession = activePreviewSession ?? viewModel.previewSession ?? captureSession
+            let cameraSession = viewModel.previewSession ?? captureSession
             ZStack {
                 AppColors.background.ignoresSafeArea()
 
@@ -100,7 +99,6 @@ struct ExerciseSessionView: View {
                     HStack(spacing: 10) {
                         Button {
                             viewModel.switchPoseSourceForTesting(.melange)
-                            activePreviewSession = viewModel.previewSession ?? captureSession
                             previewSessionToken += 1
                         } label: {
                             Text("Melange")
@@ -116,7 +114,6 @@ struct ExerciseSessionView: View {
 
                         Button {
                             viewModel.switchPoseSourceForTesting(.vision)
-                            activePreviewSession = viewModel.previewSession ?? captureSession
                             previewSessionToken += 1
                         } label: {
                             Text("Vision")
@@ -151,10 +148,6 @@ struct ExerciseSessionView: View {
             }
         }
         .onAppear {
-            if activePreviewSession == nil {
-                activePreviewSession = viewModel.previewSession ?? captureSession
-                previewSessionToken += 1
-            }
             if viewModel.previewSession == nil {
                 configureCaptureSessionIfPossible()
             }
@@ -176,6 +169,24 @@ struct ExerciseSessionView: View {
         .onReceive(viewModel.$routineExercises) { _ in
             guard !viewModel.isSessionComplete else { return }
             if viewModel.shouldEscalate() {
+                // #region agent log
+                let idx = viewModel.currentExerciseIndex
+                let exerciseId = viewModel.currentExercise?.exercise.id ?? "none"
+                let completed = viewModel.currentExercise?.completedReps ?? -1
+                let failures = viewModel.currentExercise?.consecutiveFailures ?? -1
+                AgentDebugLog.append(
+                    hypothesisId: "H_escalate_flow",
+                    location: "ExerciseSessionView.onReceive",
+                    message: "escalation_transition",
+                    data: [
+                        "exerciseIndex": "\(idx)",
+                        "exerciseId": exerciseId,
+                        "completedReps": "\(completed)",
+                        "consecutiveFailures": "\(failures)"
+                    ],
+                    runId: "pre-fix"
+                )
+                // #endregion
                 viewModel.markEscalationHandled()
                 onEscalate()
             }

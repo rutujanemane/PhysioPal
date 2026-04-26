@@ -177,8 +177,30 @@ final class SupervisionViewModel: ObservableObject {
             } else {
                 let msg = evaluation.violations.first?.rule.correctionMessage
                     ?? "Let's make a small posture adjustment."
+                // #region agent log
+                AgentDebugLog.append(
+                    hypothesisId: "H_voice",
+                    location: "SupervisionViewModel.process",
+                    message: "feedback_violation",
+                    data: [
+                        "message": msg,
+                        "sameAsLastCue": (msg == lastVoiceCue) ? "true" : "false",
+                        "violationCount": "\(evaluation.violations.count)"
+                    ],
+                    runId: "pre-fix"
+                )
+                // #endregion
                 if msg != lastVoiceCue {
                     lastVoiceCue = msg
+                    // #region agent log
+                    AgentDebugLog.append(
+                        hypothesisId: "H_voice",
+                        location: "SupervisionViewModel.process",
+                        message: "voice_speak",
+                        data: ["message": msg],
+                        runId: "pre-fix"
+                    )
+                    // #endregion
                     VoiceGuidanceService.shared.speak(msg)
                 }
                 feedbackMessage = msg
@@ -284,6 +306,7 @@ final class SupervisionViewModel: ObservableObject {
     }
 
     private func registerRep(for idx: Int) {
+        let failuresBeforeScoring = routineExercises[idx].consecutiveFailures
         routineExercises[idx].completedReps += 1
         let needed: [JointID] = [.leftShoulder, .leftHip, .leftKnee, .leftAnkle]
         let available = currentPoseFrame.map { frame in
@@ -300,9 +323,10 @@ final class SupervisionViewModel: ObservableObject {
                 "exerciseId": routineExercises[idx].exercise.id,
                 "completed": "\(routineExercises[idx].completedReps)",
                 "target": "\(routineExercises[idx].targetReps)",
-                "failures": "\(routineExercises[idx].consecutiveFailures)",
+                "failuresBeforeScoring": "\(failuresBeforeScoring)",
                 "exerciseJustFinished": "\(routineExercises[idx].isComplete)"
-            ]
+            ],
+            runId: "pre-fix"
         )
         // #endregion
         let shouldScoreForm = repSawTrustedDownFrame
@@ -323,7 +347,8 @@ final class SupervisionViewModel: ObservableObject {
                 "hadViolation": repHasViolation ? "true" : "false",
                 "lastEvalCorrect": lastEvaluationCorrect ? "true" : "false",
                 "failuresAfter": "\(routineExercises[idx].consecutiveFailures)"
-            ]
+            ],
+            runId: "pre-fix"
         )
         // #endregion
         repHasViolation = false
