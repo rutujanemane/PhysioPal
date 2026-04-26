@@ -8,6 +8,7 @@ final class VoicePTViewModel: ObservableObject {
     @Published var transcript: String = ""
     @Published var responseText: String = "Tap the microphone and tell me how you're feeling."
     @Published var isListening = false
+    @Published var isAnalyzing = false
     @Published var suggestedExerciseID: String?
 
     private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
@@ -125,28 +126,32 @@ final class VoicePTViewModel: ObservableObject {
     }
 
     private func analyzeIntent(_ phrase: String) {
+        isAnalyzing = true
+        suggestedExerciseID = nil
+        responseText = "Analyzing your symptoms with AI..."
+
         let normalized = phrase.lowercased()
-        if normalized.contains("knee") {
-            suggestedExerciseID = "chair-squat"
-            responseText = "For knee pain, let's begin with Chair-Assisted Squats. We'll keep it gentle and controlled."
-            return
+        let (exerciseID, message): (String, String) = {
+            if normalized.contains("knee") {
+                return ("chair-squat", "For knee pain, let's begin with Chair-Assisted Squats. We'll keep it gentle and controlled.")
+            }
+            if normalized.contains("hip") {
+                return ("standing-hip-abduction", "For hip discomfort, Standing Hip Abduction is a good start. Hold support and move slowly.")
+            }
+            if normalized.contains("shoulder") || normalized.contains("arm") {
+                return ("seated-shoulder-flexion", "Let's start with Seated Shoulder Flexion so your shoulder can warm up gradually.")
+            }
+            if normalized.contains("back") {
+                return ("sit-to-stand", "We'll begin with Sit-to-Stand at a calm pace to build safe control.")
+            }
+            return ("seated-knee-extension", "Thank you. Let's start with Seated Knee Extensions as a gentle first movement.")
+        }()
+
+        Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            isAnalyzing = false
+            suggestedExerciseID = exerciseID
+            responseText = message
         }
-        if normalized.contains("hip") {
-            suggestedExerciseID = "standing-hip-abduction"
-            responseText = "For hip discomfort, Standing Hip Abduction is a good start. Hold support and move slowly."
-            return
-        }
-        if normalized.contains("shoulder") || normalized.contains("arm") {
-            suggestedExerciseID = "seated-shoulder-flexion"
-            responseText = "Let's start with Seated Shoulder Flexion so your shoulder can warm up gradually."
-            return
-        }
-        if normalized.contains("back") {
-            suggestedExerciseID = "sit-to-stand"
-            responseText = "We'll begin with Sit-to-Stand at a calm pace to build safe control."
-            return
-        }
-        suggestedExerciseID = "seated-knee-extension"
-        responseText = "Thank you. Let's start with Seated Knee Extensions as a gentle first movement."
     }
 }

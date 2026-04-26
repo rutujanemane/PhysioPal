@@ -7,17 +7,18 @@ struct RoleSelectionView: View {
         ZStack {
             AppColors.background.ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 28) {
-                    Spacer().frame(height: 24)
+            VStack(spacing: 0) {
+                Spacer()
 
-                    heroSection
+                heroSection
+                    .padding(.bottom, 44)
 
+                VStack(spacing: 16) {
                     NavigationLink {
                         HomeView()
                     } label: {
                         roleCard(
-                            icon: "figure.walk.motion",
+                            icon: "figure.strengthtraining.traditional",
                             title: "I'm a Patient",
                             subtitle: "Start your exercise session with real-time guidance",
                             accentColor: AppColors.primary
@@ -31,7 +32,7 @@ struct RoleSelectionView: View {
                         PTDashboardView()
                     } label: {
                         roleCard(
-                            icon: "stethoscope",
+                            icon: "stethoscope.circle.fill",
                             title: "I'm a Physiotherapist",
                             subtitle: "View patient health data, exercise history, and progress",
                             accentColor: AppColors.secondary
@@ -40,12 +41,13 @@ struct RoleSelectionView: View {
                     .simultaneousGesture(TapGesture().onEnded {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     })
-
-                    privacyBadge
-
-                    Spacer().frame(height: 24)
                 }
                 .padding(.horizontal, AppLayout.screenPadding)
+
+                Spacer()
+
+                privacyBadge
+                    .padding(.bottom, 32)
             }
             .opacity(appeared ? 1 : 0)
             .onAppear {
@@ -58,11 +60,23 @@ struct RoleSelectionView: View {
     }
 
     private var heroSection: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "figure.walk.motion")
-                .font(.system(size: 64))
-                .foregroundStyle(AppColors.primary)
-                .symbolEffect(.bounce, options: .nonRepeating)
+        VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [AppColors.primary.opacity(0.15), AppColors.primary.opacity(0.05)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 110, height: 110)
+
+                Image(systemName: "heart.circle.fill")
+                    .font(.system(size: 56))
+                    .foregroundStyle(AppColors.primary)
+                    .symbolEffect(.bounce, options: .nonRepeating)
+            }
 
             Text("PhysioPal")
                 .font(.system(size: 38, weight: .bold, design: .rounded))
@@ -72,48 +86,40 @@ struct RoleSelectionView: View {
                 .font(AppFonts.body)
                 .foregroundStyle(AppColors.textSecondary)
         }
-        .padding(.bottom, 8)
     }
 
     private func roleCard(icon: String, title: String, subtitle: String, accentColor: Color) -> some View {
-        HStack(spacing: 20) {
-            ZStack {
-                Circle()
-                    .fill(accentColor.opacity(0.12))
-                    .frame(width: 72, height: 72)
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 28))
+                .foregroundStyle(accentColor)
+                .frame(width: 52, height: 52)
+                .background(accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
 
-                Image(systemName: icon)
-                    .font(.system(size: 32))
-                    .foregroundStyle(accentColor)
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(spacing: 4) {
                 Text(title)
-                    .font(AppFonts.heading)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(AppColors.textPrimary)
+                    .multilineTextAlignment(.center)
 
                 Text(subtitle)
                     .font(AppFonts.caption)
                     .foregroundStyle(AppColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
-                    .lineSpacing(4)
             }
-
-            Spacer()
+            .frame(maxWidth: .infinity)
 
             Image(systemName: "chevron.right")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(accentColor.opacity(0.5))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(accentColor.opacity(0.4))
         }
-        .padding(AppLayout.cardPadding + 4)
+        .padding(20)
         .background(
             RoundedRectangle(cornerRadius: AppLayout.cardRadius)
                 .fill(AppColors.cardWhite)
                 .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: AppLayout.cardRadius)
-                .stroke(accentColor.opacity(0.15), lineWidth: 1.5)
         )
     }
 

@@ -4,7 +4,7 @@ enum AppFlowStep {
     case healthCheck
     case exercise(ExerciseRoutine)
     case reward(SessionSummary)
-    case escalation
+    case escalation(exerciseName: String?)
 }
 
 struct AppFlowView: View {
@@ -53,8 +53,10 @@ struct AppFlowView: View {
                             summary: summary,
                             sharedVideoCount: sharedVideoCount
                         )
+                        let lastExerciseName = summary.exercises.last(where: { $0.completedReps > 0 })?.exercise.name
+                            ?? summary.exercises.first?.exercise.name
                         withAnimation(.easeInOut(duration: AppAnimation.screenTransition)) {
-                            currentStep = .escalation
+                            currentStep = .escalation(exerciseName: lastExerciseName)
                         }
                     },
                     onBack: {
@@ -74,8 +76,8 @@ struct AppFlowView: View {
                     }
                 }
 
-            case .escalation:
-                EscalationView {
+            case .escalation(let exerciseName):
+                EscalationView(exerciseName: exerciseName) {
                     // #region agent log
                     print("[AppFlowView][H6] transition escalation -> exercise/healthCheck")
                     // #endregion

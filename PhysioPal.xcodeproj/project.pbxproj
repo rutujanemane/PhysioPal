@@ -273,12 +273,14 @@
 				CODE_SIGN_ENTITLEMENTS = PhysioPal/PhysioPal.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 93CJNHL47N;
+				DEVELOPMENT_TEAM = HKY6KS9WBS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "PhysioPal uses your camera to watch your exercise form and give you real-time guidance. Your video never leaves this device.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "PhysioPal reads your sleep, heart rate, steps, and energy levels to personalize your exercise routine and share readiness insights with your physiotherapist.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "PhysioPal uses your microphone so you can describe symptoms by voice.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "PhysioPal uses speech recognition to understand your symptom and suggest an exercise.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -289,7 +291,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = codecatalyst.PhysioPal1;
+				PRODUCT_BUNDLE_IDENTIFIER = codecatalyst.PhysioPal;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -309,12 +311,14 @@
 				CODE_SIGN_ENTITLEMENTS = PhysioPal/PhysioPal.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 93CJNHL47N;
+				DEVELOPMENT_TEAM = HKY6KS9WBS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "PhysioPal uses your camera to watch your exercise form and give you real-time guidance. Your video never leaves this device.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "PhysioPal reads your sleep, heart rate, steps, and energy levels to personalize your exercise routine and share readiness insights with your physiotherapist.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "PhysioPal uses your microphone so you can describe symptoms by voice.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "PhysioPal uses speech recognition to understand your symptom and suggest an exercise.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -325,7 +329,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = codecatalyst.PhysioPal1;
+				PRODUCT_BUNDLE_IDENTIFIER = codecatalyst.PhysioPal;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;

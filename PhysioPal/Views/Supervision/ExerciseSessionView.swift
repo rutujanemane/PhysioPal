@@ -35,167 +35,177 @@ struct ExerciseSessionView: View {
     }
 
     var body: some View {
-        GeometryReader { geo in
-            let cameraSession = viewModel.previewSession ?? captureSession
-            ZStack {
-                AppColors.background.ignoresSafeArea()
+        let cameraSession = viewModel.previewSession ?? captureSession
+        ZStack {
+            Group {
+                if showCameraPreview {
+                    CameraPreviewView(session: cameraSession)
+                        .id(previewSessionToken)
+                } else {
+                    Color.black
+                }
+            }
+            .ignoresSafeArea()
 
-                VStack(spacing: 16) {
-                    HStack {
-                        Button {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            endSession(exit: .back)
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "chevron.left")
-                                    .font(.system(size: 22, weight: .semibold))
-                                Text("Back")
-                                    .font(AppFonts.button)
-                            }
-                            .foregroundStyle(AppColors.primary)
-                            .padding(.horizontal, 16)
-                            .frame(height: 56)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(.white)
-                                    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
-                            )
-                        }
-                        .accessibilityLabel("Back to previous screen")
+            PoseOverlayView(
+                frame: viewModel.currentPoseFrame,
+                highlightedJoints: viewModel.highlightedJoints
+            )
+            .ignoresSafeArea()
 
-                        Spacer()
-                    }
-                    .padding(.horizontal, AppLayout.screenPadding)
-                    .padding(.top, 12)
+            VStack(spacing: 0) {
+                LinearGradient(
+                    colors: [.black.opacity(0.5), .clear],
+                    startPoint: .top, endPoint: .bottom
+                )
+                .frame(height: 120)
+                Spacer()
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.6)],
+                    startPoint: .top, endPoint: .bottom
+                )
+                .frame(height: 260)
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
 
-                    ZStack(alignment: .top) {
-                        if showCameraPreview {
-                            CameraPreviewView(session: cameraSession)
-                                .id(previewSessionToken)
-                                .overlay(AppColors.textPrimary.opacity(0.08))
-                        } else {
-                            Color.black.opacity(0.9)
-                        }
-
-                        PoseOverlayView(
-                            frame: viewModel.currentPoseFrame,
-                            highlightedJoints: viewModel.highlightedJoints
-                        )
-
-                        FeedbackOverlayView(message: viewModel.feedbackMessage)
-                    }
-                    .frame(height: geo.size.height * 0.60)
-                    .clipShape(RoundedRectangle(cornerRadius: AppLayout.cardRadius))
-                    .overlay(alignment: .bottomTrailing) {
-                        Text(currentExerciseRepDisplay)
-                            .font(AppFonts.repCounter)
-                            .foregroundStyle(.white)
-                            .scaleEffect(repScale)
-                            .padding(16)
-                            .onChange(of: viewModel.repPulseToken) { _ in
-                                withAnimation(.interpolatingSpring(stiffness: 200, damping: 15)) {
-                                    repScale = 1.18
-                                }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
-                                    withAnimation(.easeInOut(duration: 0.18)) {
-                                        repScale = 1.0
-                                    }
-                                }
-                            }
-                    }
-                    .overlay(alignment: .topTrailing) {
-                        Button {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            viewModel.toggleCameraPosition()
-                            previewSessionToken += 1
-                        } label: {
-                            Image(systemName: "arrow.triangle.2.circlepath.camera.fill")
-                                .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 54, height: 54)
-                            .background(Color.black.opacity(0.55))
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                        }
-                        .padding(12)
-                        .accessibilityLabel("Switch camera between front and back")
-                    }
-                    .padding(.horizontal, AppLayout.screenPadding)
-                    .padding(.top, 0)
-
+            VStack(spacing: 0) {
+                HStack(alignment: .top) {
                     Button {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        endSession(exit: .manualStop)
+                        endSession(exit: .back)
                     } label: {
-                        Text("Stop Session")
-                            .font(AppFonts.button)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: AppLayout.buttonHeight)
-                            .background(AppColors.secondary)
-                            .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
-                    }
-                    .padding(.horizontal, AppLayout.screenPadding)
-
-                    Button {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        viewModel.triggerFallRiskForDemo()
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "cross.case.fill")
-                                .font(.system(size: 22, weight: .semibold))
-                            Text("I Need Help")
-                                .font(AppFonts.button)
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .bold))
+                            Text("Back")
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
                         }
                         .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: AppLayout.buttonHeight)
-                        .background(AppColors.secondary)
-                        .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
+                        .padding(.horizontal, 16)
+                        .frame(height: 44)
+                        .background(.ultraThinMaterial, in: Capsule())
                     }
-                    .padding(.horizontal, AppLayout.screenPadding)
-
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        shouldRecordVideos.toggle()
-                        if shouldRecordVideos {
-                            startCurrentExerciseRecordingIfNeeded()
-                        } else {
-                            stopAndSaveCurrentRecording()
-                        }
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: shouldRecordVideos ? "record.circle.fill" : "record.circle")
-                                .font(.system(size: 22, weight: .semibold))
-                            Text(shouldRecordVideos ? "Recording Enabled" : "Record Exercise Videos")
-                                .font(AppFonts.button)
-                        }
-                        .foregroundStyle(shouldRecordVideos ? .white : AppColors.primary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: AppLayout.buttonHeight)
-                        .background(
-                            shouldRecordVideos
-                            ? AnyView(RoundedRectangle(cornerRadius: AppLayout.buttonRadius).fill(AppColors.primary))
-                            : AnyView(RoundedRectangle(cornerRadius: AppLayout.buttonRadius).stroke(AppColors.primary, lineWidth: 2))
-                        )
-                    }
-                    .padding(.horizontal, AppLayout.screenPadding)
-
-                    VStack(spacing: 8) {
-                        Text(viewModel.currentExercise?.exercise.name ?? "Session Complete")
-                            .font(AppFonts.heading)
-                            .foregroundStyle(AppColors.textPrimary)
-                            .multilineTextAlignment(.center)
-
-                        if let current = viewModel.currentExercise {
-                            Text("Reps: \(current.completedReps) / \(current.targetReps)")
-                                .font(AppFonts.body)
-                                .foregroundStyle(AppColors.textSecondary)
-                        }
-                    }
-                    .padding(.horizontal, AppLayout.screenPadding)
+                    .accessibilityLabel("Back to previous screen")
 
                     Spacer()
+
+                    if let current = viewModel.currentExercise {
+                        Text(current.exercise.name)
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .padding(.horizontal, 16)
+                            .frame(height: 44)
+                            .background(.ultraThinMaterial, in: Capsule())
+                    }
+
+                    Spacer()
+
+                    Button {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        viewModel.toggleCameraPosition()
+                        previewSessionToken += 1
+                    } label: {
+                        Image(systemName: "arrow.triangle.2.circlepath.camera.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .accessibilityLabel("Switch camera")
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+
+                FeedbackOverlayView(message: viewModel.feedbackMessage)
+                    .padding(.top, 12)
+
+                Spacer()
+
+                VStack(spacing: 14) {
+                    Text(currentExerciseRepDisplay)
+                        .font(AppFonts.repCounter)
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.4), radius: 6, y: 2)
+                        .scaleEffect(repScale)
+                        .onChange(of: viewModel.repPulseToken) { _ in
+                            withAnimation(.interpolatingSpring(stiffness: 200, damping: 15)) {
+                                repScale = 1.18
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
+                                withAnimation(.easeInOut(duration: 0.18)) {
+                                    repScale = 1.0
+                                }
+                            }
+                        }
+
+                    if let current = viewModel.currentExercise {
+                        Text("\(current.completedReps) of \(current.targetReps) reps")
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
+
+                    VStack(spacing: 10) {
+                        Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            endSession(exit: .manualStop)
+                        } label: {
+                            Text("Stop Session")
+                                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: AppLayout.buttonHeight)
+                                .background(AppColors.secondary, in: RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
+                        }
+                        .accessibilityLabel("Stop exercise session")
+
+                        HStack(spacing: 10) {
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                shouldRecordVideos.toggle()
+                                if shouldRecordVideos {
+                                    startCurrentExerciseRecordingIfNeeded()
+                                } else {
+                                    stopAndSaveCurrentRecording()
+                                }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: shouldRecordVideos ? "record.circle.fill" : "record.circle")
+                                        .font(.system(size: 20, weight: .semibold))
+                                    Text(shouldRecordVideos ? "Recording" : "Record")
+                                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                }
+                                .foregroundStyle(shouldRecordVideos ? AppColors.secondary : .white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                            }
+                            .accessibilityLabel(shouldRecordVideos ? "Stop recording" : "Start recording")
+
+                            Button {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                viewModel.triggerFallRiskForDemo()
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "cross.case.fill")
+                                        .font(.system(size: 20, weight: .semibold))
+                                    Text("I Need Help")
+                                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                }
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background(AppColors.secondary.opacity(0.7), in: RoundedRectangle(cornerRadius: 14))
+                            }
+                            .accessibilityLabel("I need help — call physiotherapist")
+                        }
+                    }
+                    .padding(16)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22))
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
             }
         }
         .onAppear {
@@ -300,9 +310,8 @@ struct ExerciseSessionView: View {
         if movedForward {
             announceCurrentExercise()
         }
-        if movedForward, shouldRecordVideos {
+        if movedForward, shouldRecordVideos, !viewModel.isSessionComplete {
             stopAndSaveCurrentRecording {
-                guard !viewModel.isSessionComplete else { return }
                 startCurrentExerciseRecordingIfNeeded()
             }
         }
@@ -341,10 +350,10 @@ struct ExerciseSessionView: View {
     private func endSession(exit: ExitMode) {
         guard !hasExited else { return }
         hasExited = true
-        showCameraPreview = false
         let summary = viewModel.buildSummary()
         let markShared = exit == .escalation
         let finalize: () -> Void = {
+            showCameraPreview = false
             var sharedCount = 0
             if exit == .escalation {
                 sharedCount = SessionVideoStore.shared.markVideosShared(forSessionStartTime: summary.startTime)
