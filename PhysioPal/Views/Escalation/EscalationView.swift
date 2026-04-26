@@ -10,6 +10,7 @@ struct EscalationView: View {
     @State private var showVideoPlayer = false
     @State private var showSharedToast = false
     @State private var showDeleteConfirm = false
+    @State private var startedAutoCall = false
 
     var body: some View {
         ZStack {
@@ -45,6 +46,13 @@ struct EscalationView: View {
             .onAppear {
                 withAnimation(.easeOut(duration: AppAnimation.screenTransition)) {
                     appeared = true
+                }
+                guard !startedAutoCall else { return }
+                startedAutoCall = true
+                Task {
+                    await viewModel.callPhysiotherapist(
+                        contextMessage: "Urgent incident detected. Please check incidents of the patient."
+                    )
                 }
             }
         }

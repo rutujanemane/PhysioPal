@@ -6,6 +6,8 @@
 	<string>PhysioPal uses your microphone so you can describe symptoms by voice.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>PhysioPal uses speech recognition to understand your symptom and suggest an exercise.</string>
+	<key>TWILIO_SERVER_URL</key>
+	<string>http://10.30.175.26:5004</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

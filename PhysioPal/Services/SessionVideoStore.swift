@@ -132,6 +132,22 @@ final class SessionVideoStore: ObservableObject {
         persistIndex()
     }
 
+    @discardableResult
+    func markVideosShared(forSessionStartTime startTime: Date?) -> Int {
+        let targets = videosForSession(startTime: startTime)
+        guard !targets.isEmpty else { return 0 }
+        let ids = Set(targets.map(\.id))
+        var count = 0
+        for idx in videos.indices where ids.contains(videos[idx].id) {
+            if videos[idx].sharedWithPT == false {
+                count += 1
+            }
+            videos[idx].sharedWithPT = true
+        }
+        persistIndex()
+        return max(count, targets.count)
+    }
+
     func unshareVideo(id: UUID) {
         guard let idx = videos.firstIndex(where: { $0.id == id }) else { return }
         videos[idx].sharedWithPT = false

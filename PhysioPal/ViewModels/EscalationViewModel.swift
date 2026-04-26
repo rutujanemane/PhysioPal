@@ -23,7 +23,7 @@ final class EscalationViewModel: ObservableObject {
         case failed
     }
 
-    func callPhysiotherapist() async {
+    func callPhysiotherapist(contextMessage: String = "Please check incidents of the patient.") async {
         callState = .calling
         ptAction = nil
 
@@ -32,7 +32,7 @@ final class EscalationViewModel: ObservableObject {
         do {
             let result = try await TwilioService.shared.callPhysiotherapist(
                 patientName: PatientProfile.mock.name,
-                exerciseName: "their exercise session"
+                exerciseName: contextMessage
             )
 
             if result.status == .initiated {
@@ -97,7 +97,9 @@ final class EscalationViewModel: ObservableObject {
             }
 
             if callState != .ptResponded {
-                callState = .completed
+                callState = .failed
+                errorMessage = "Call timed out. Please verify ngrok PUBLIC_URL and Twilio webhook reachability."
+                showError = true
             }
         }
     }

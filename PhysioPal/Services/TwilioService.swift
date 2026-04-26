@@ -135,5 +135,19 @@ enum TwilioError: LocalizedError {
 }
 
 enum TwilioConfig {
-    static let serverURL = "http://10.30.216.93:5004"
+    static var serverURL: String {
+        if let value = ProcessInfo.processInfo.environment["TWILIO_SERVER_URL"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !value.isEmpty {
+            return value
+        }
+        if let value = Bundle.main.object(forInfoDictionaryKey: "TWILIO_SERVER_URL") as? String,
+           !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return value
+        }
+        #if targetEnvironment(simulator)
+        return "http://127.0.0.1:5004"
+        #else
+        return "http://10.30.175.26:5004"
+        #endif
+    }
 }

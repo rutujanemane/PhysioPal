@@ -14,6 +14,7 @@ struct ExerciseSessionView: View {
     @State private var previewSessionToken: Int = 0
     @State private var repScale: CGFloat = 1.0
     @State private var hasExited = false
+    @State private var showCameraPreview = true
     @State private var shouldRecordVideos = false
     @State private var recordingExerciseIndex: Int?
     @State private var lastKnownExerciseIndex = 0
@@ -68,9 +69,13 @@ struct ExerciseSessionView: View {
                     .padding(.top, 12)
 
                     ZStack(alignment: .top) {
-                        CameraPreviewView(session: cameraSession)
-                            .id(previewSessionToken)
-                            .overlay(AppColors.textPrimary.opacity(0.08))
+                        if showCameraPreview {
+                            CameraPreviewView(session: cameraSession)
+                                .id(previewSessionToken)
+                                .overlay(AppColors.textPrimary.opacity(0.08))
+                        } else {
+                            Color.black.opacity(0.9)
+                        }
 
                         PoseOverlayView(
                             frame: viewModel.currentPoseFrame,
@@ -132,6 +137,24 @@ struct ExerciseSessionView: View {
                     .padding(.horizontal, AppLayout.screenPadding)
 
                     Button {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        viewModel.triggerFallRiskForDemo()
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "cross.case.fill")
+                                .font(.system(size: 22, weight: .semibold))
+                            Text("I Need Help")
+                                .font(AppFonts.button)
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: AppLayout.buttonHeight)
+                        .background(AppColors.secondary)
+                        .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
+                    }
+                    .padding(.horizontal, AppLayout.screenPadding)
+
+                    Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         shouldRecordVideos.toggle()
                         if shouldRecordVideos {
@@ -176,12 +199,15 @@ struct ExerciseSessionView: View {
             }
         }
         .onAppear {
+            showCameraPreview = true
             viewModel.start()
             lastKnownExerciseIndex = viewModel.currentExerciseIndex
             announceCurrentExercise()
         }
         .onDisappear {
-            viewModel.stop()
+            if !hasExited {
+                viewModel.stop()
+            }
         }
         .onChange(of: viewModel.currentExerciseIndex) { _ in
             handleExerciseTransition()
@@ -199,6 +225,9 @@ struct ExerciseSessionView: View {
         .onReceive(viewModel.$fallRiskDetected) { detected in
             guard detected else { return }
             guard viewModel.consumeFallRiskEvent() else { return }
+            endSession(exit: .escalation)
+        }
+        .onReceive(viewModel.$escalationRequestToken.dropFirst()) { _ in
             endSession(exit: .escalation)
         }
     }
@@ -312,17 +341,33 @@ struct ExerciseSessionView: View {
     private func endSession(exit: ExitMode) {
         guard !hasExited else { return }
         hasExited = true
+        showCameraPreview = false
         let summary = viewModel.buildSummary()
-        if shouldRecordVideos {
-            stopAndSaveCurrentRecording(markShared: false)
+        let markShared = exit == .escalation
+        let finalize: () -> Void = {
+            if exit == .escalation {
+                let sharedCount = SessionVideoStore.shared.markVideosShared(forSessionStartTime: summary.startTime)
+                IncidentStore.shared.recordEscalation(summary: summary, sharedVideoCount: sharedCount)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                viewModel.stop()
+                switch exit {
+                case .complete, .manualStop:
+                    onComplete(summary)
+                case .escalation:
+                    onEscalate()
+                case .back:
+                    onBack()
+                }
+            }
         }
-        switch exit {
-        case .complete, .manualStop:
-            onComplete(summary)
-        case .escalation:
-            onEscalate()
-        case .back:
-            onBack()
+
+        if shouldRecordVideos {
+            stopAndSaveCurrentRecording(markShared: markShared) {
+                finalize()
+            }
+        } else {
+            finalize()
         }
     }
 

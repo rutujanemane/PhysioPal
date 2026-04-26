@@ -6,6 +6,7 @@ struct HomeView: View {
     @StateObject private var sessionStore = SessionStore.shared
     @StateObject private var routineStore = RoutineStore.shared
     @ObservedObject private var videoStore = SessionVideoStore.shared
+    @ObservedObject private var incidentStore = IncidentStore.shared
     @State private var healthMetrics: HealthReadiness?
     @State private var isLoadingHealth = true
     @State private var appeared = false
@@ -29,6 +30,7 @@ struct HomeView: View {
                     myProgressSection
                     recentSessionsSection
                     myVideoSection
+                    incidentsSection
                     achievementsSection
                     quickActionsSection
 
@@ -462,6 +464,60 @@ struct HomeView: View {
                     RoundedRectangle(cornerRadius: AppLayout.cardRadius)
                         .fill(AppColors.surface)
                 )
+            }
+        }
+    }
+
+    private var incidentsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Incidents")
+                .font(AppFonts.heading)
+                .foregroundStyle(AppColors.textPrimary)
+
+            if incidentStore.incidents.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "checkmark.shield.fill")
+                        .font(.system(size: 30))
+                        .foregroundStyle(AppColors.success.opacity(0.65))
+                    Text("No incidents reported")
+                        .font(AppFonts.body)
+                        .foregroundStyle(AppColors.textSecondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .background(
+                    RoundedRectangle(cornerRadius: AppLayout.cardRadius)
+                        .fill(AppColors.surface)
+                )
+            } else {
+                ForEach(incidentStore.incidents.prefix(3)) { incident in
+                    HStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.shield.fill")
+                            .font(.system(size: 22))
+                            .foregroundStyle(AppColors.secondary)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(incident.title)
+                                .font(AppFonts.bodyBold)
+                                .foregroundStyle(AppColors.textPrimary)
+                            Text(incident.details)
+                                .font(AppFonts.caption)
+                                .foregroundStyle(AppColors.textSecondary)
+                                .lineSpacing(4)
+                            Text("\(timeAgo(incident.createdAt)) · \(incident.sharedVideoCount) clip(s) shared with PT")
+                                .font(AppFonts.caption)
+                                .foregroundStyle(AppColors.primary)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(AppColors.cardWhite)
+                            .shadow(color: AppShadow.color, radius: 6, x: 0, y: 2)
+                    )
+                }
             }
         }
     }

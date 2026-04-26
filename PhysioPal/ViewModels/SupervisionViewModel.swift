@@ -13,6 +13,8 @@ final class SupervisionViewModel: ObservableObject {
     @Published private(set) var activePoseSource: PoseSourceMode = .melange
     @Published private(set) var activeCameraPosition: AVCaptureDevice.Position = .back
     @Published private(set) var fallRiskDetected = false
+    @Published private(set) var escalationRequestToken: Int = 0
+    @Published private(set) var isSafetyEscalating = false
 
     private let poseProvider: PoseProviderProtocol
     private let evaluator = ExerciseEvaluator(requiredConsecutiveFrames: 2)
@@ -44,6 +46,15 @@ final class SupervisionViewModel: ObservableObject {
     private var lastHipCenterY: CGFloat?
     private var lastHipTimestamp: TimeInterval?
     private var fallCooldownUntil: TimeInterval = 0
+    private var lowPostureStartedAt: TimeInterval?
+    private var baselineHipY: CGFloat?
+    private var baselineShoulderY: CGFloat?
+    private var stablePoseFrameStreak = 0
+    private var lostStablePoseFrameStreak = 0
+    private var trackingDegradeWindowRemaining = 0
+    private var preDegradeHipY: CGFloat?
+    private var trackingLossConditionStartedAt: TimeInterval?
+    private let trackingLossConfirmationSeconds: TimeInterval = 2.5
 
     init(routine: ExerciseRoutine, poseProvider: PoseProviderProtocol = TestingPoseProvider(defaultSource: .melange)) {
         self.routineExercises = routine.exercises
@@ -118,6 +129,13 @@ final class SupervisionViewModel: ObservableObject {
         return true
     }
 
+    func triggerFallRiskForDemo() {
+        requestImmediateEscalation(
+            message: "Let's get help right away.",
+            speech: "Let's get help right away."
+        )
+    }
+
     func buildSummary() -> SessionSummary {
         SessionSummary(
             exercises: routineExercises,
@@ -137,6 +155,7 @@ final class SupervisionViewModel: ObservableObject {
     }
 
     private func process(frame: PoseFrame) {
+        guard !isSafetyEscalating else { return }
         guard !isAdvancingExercise else { return }
         let now = Date().timeIntervalSince1970
         if now - lastProcessedFrameAt < targetProcessingInterval {
@@ -161,9 +180,27 @@ final class SupervisionViewModel: ObservableObject {
         )
         let hasRepSignal = kneeAngle != nil || bestKneeY(from: smoothedFrame) != nil
         let poseTrustedForRep = hasRepSignal && repConfidence >= 0.2
+        let trackingConfidence = meanConfidence(
+            smoothedFrame,
+            joints: [.leftShoulder, .rightShoulder, .leftHip, .rightHip, .leftKnee, .rightKnee]
+        )
+        let hasCoreJoints = [.leftShoulder, .rightShoulder, .leftHip, .rightHip, .leftKnee, .rightKnee]
+            .allSatisfy { smoothedFrame.landmark(for: $0) != nil }
+        let stablePoseForSafety = hasCoreJoints && trackingConfidence >= 0.35
         if now < repDetectionResumeAt {
             highlightedJoints = []
             feedbackMessage = nil
+            return
+        }
+        updateSafetyEscalationSignals(
+            frame: smoothedFrame,
+            stablePose: stablePoseForSafety
+        )
+        if shouldEscalateForTrackingLoss(now: now) {
+            requestImmediateEscalation(
+                message: "We're having trouble tracking safely. Let's get support.",
+                speech: "We're having trouble tracking safely. Let's get support."
+            )
             return
         }
         let isDownForForm: Bool = {
@@ -262,6 +299,60 @@ final class SupervisionViewModel: ObservableObject {
         evaluateFallRisk(frame: smoothedFrame, now: now)
     }
 
+    private func updateSafetyEscalationSignals(frame: PoseFrame, stablePose: Bool) {
+        if stablePose {
+            stablePoseFrameStreak += 1
+            lostStablePoseFrameStreak = 0
+            if stablePoseFrameStreak >= 6 {
+                trackingDegradeWindowRemaining = 0
+                preDegradeHipY = averageHipY(from: frame)
+            }
+            return
+        }
+
+        stablePoseFrameStreak = 0
+        lostStablePoseFrameStreak += 1
+        if trackingDegradeWindowRemaining == 0 {
+            trackingDegradeWindowRemaining = 12
+            preDegradeHipY = averageHipY(from: frame)
+        } else {
+            trackingDegradeWindowRemaining = max(0, trackingDegradeWindowRemaining - 1)
+        }
+    }
+
+    private func shouldEscalateForTrackingLoss(now: TimeInterval) -> Bool {
+        guard !isSessionComplete else { return false }
+        guard fallRiskDetected == false else { return false }
+        guard let frame = currentPoseFrame else { return false }
+
+        let lostStablePoseTooLong = lostStablePoseFrameStreak >= 14
+        let currentHipY = averageHipY(from: frame)
+        let rapidTrackingDegradeWithDrop: Bool = {
+            guard trackingDegradeWindowRemaining > 0,
+                  let before = preDegradeHipY,
+                  let current = currentHipY else { return false }
+            return (current - before) > 0.10
+        }()
+
+        let conditionActive = lostStablePoseTooLong || rapidTrackingDegradeWithDrop
+        if conditionActive {
+            if trackingLossConditionStartedAt == nil {
+                trackingLossConditionStartedAt = now
+            }
+            let heldFor = now - (trackingLossConditionStartedAt ?? now)
+            return heldFor >= trackingLossConfirmationSeconds
+        }
+
+        trackingLossConditionStartedAt = nil
+        return false
+    }
+
+    private func averageHipY(from frame: PoseFrame) -> CGFloat? {
+        let hips = [frame.landmark(for: .leftHip), frame.landmark(for: .rightHip)].compactMap { $0 }
+        guard !hips.isEmpty else { return nil }
+        return hips.map(\.position.y).reduce(0, +) / CGFloat(hips.count)
+    }
+
     private static func usesSquatStyleRepCounting(_ exercise: Exercise) -> Bool {
         ["deep-squat", "chair-squat", "standing-hamstring-curl", "sit-to-stand"].contains(exercise.id)
     }
@@ -313,8 +404,22 @@ final class SupervisionViewModel: ObservableObject {
         let hips = [frame.landmark(for: .leftHip), frame.landmark(for: .rightHip)].compactMap { $0 }
         let shoulders = [frame.landmark(for: .leftShoulder), frame.landmark(for: .rightShoulder)].compactMap { $0 }
         guard !hips.isEmpty, !shoulders.isEmpty else { return }
+        let meanConfidence = (hips.map(\.confidence).reduce(0, +) + shoulders.map(\.confidence).reduce(0, +))
+            / Float(hips.count + shoulders.count)
+        guard meanConfidence >= 0.22 else { return }
         let hipY = hips.map(\.position.y).reduce(0, +) / CGFloat(hips.count)
         let shoulderY = shoulders.map(\.position.y).reduce(0, +) / CGFloat(shoulders.count)
+
+        if let baselineHipY {
+            self.baselineHipY = baselineHipY * 0.92 + hipY * 0.08
+        } else {
+            baselineHipY = hipY
+        }
+        if let baselineShoulderY {
+            self.baselineShoulderY = baselineShoulderY * 0.92 + shoulderY * 0.08
+        } else {
+            baselineShoulderY = shoulderY
+        }
 
         defer {
             lastHipCenterY = hipY
@@ -328,16 +433,45 @@ final class SupervisionViewModel: ObservableObject {
         let deltaTime = now - previousTimestamp
         let deltaY = hipY - previousHipY
         let suddenDrop = deltaTime > 0.05 && deltaTime < 0.45 && deltaY > 0.18
-        let lowPosture = hipY > 0.76 && shoulderY > 0.56
-        guard suddenDrop && lowPosture else { return }
+        let lowPosture = hipY > 0.66 && shoulderY > 0.50
+        let relativeHipDrop = hipY - (baselineHipY ?? hipY)
+        let relativeShoulderDrop = shoulderY - (baselineShoulderY ?? shoulderY)
+        let strongRelativeDrop = relativeHipDrop > 0.12 && relativeShoulderDrop > 0.08
+        if lowPosture {
+            if lowPostureStartedAt == nil {
+                lowPostureStartedAt = now
+            }
+        } else {
+            lowPostureStartedAt = nil
+        }
 
-        fallRiskDetected = true
-        feedbackMessage = "It looks like you may need support. Let's get help."
-        VoiceGuidanceService.shared.speak("It looks like you may need support. Let's get help.")
+        let sustainedLowPosture = (lowPostureStartedAt.map { now - $0 } ?? 0) > 0.7
+        let veryLowShoulders = shoulderY > 0.58
+        let gradualDrop = deltaTime > 0.2 && deltaTime < 1.2 && deltaY > 0.08
+        let slowCollapseRisk = sustainedLowPosture && veryLowShoulders && (gradualDrop || strongRelativeDrop)
+
+        guard (suddenDrop && (lowPosture || strongRelativeDrop)) || slowCollapseRisk else { return }
+
+        requestImmediateEscalation(
+            message: "It looks like you may need support. Let's get help.",
+            speech: "It looks like you may need support. Let's get help."
+        )
         fallCooldownUntil = now + 8
+        lowPostureStartedAt = nil
+    }
+
+    private func requestImmediateEscalation(message: String, speech: String) {
+        guard !isSafetyEscalating else { return }
+        isSafetyEscalating = true
+        VoiceGuidanceService.shared.stop()
+        fallRiskDetected = true
+        feedbackMessage = message
+        VoiceGuidanceService.shared.speak(speech)
+        escalationRequestToken += 1
     }
 
     private func registerRep(for idx: Int) {
+        guard !isSafetyEscalating else { return }
         routineExercises[idx].completedReps += 1
         // #region agent log
         DebugProbe.log(
@@ -427,5 +561,14 @@ final class SupervisionViewModel: ObservableObject {
         isAdvancingExercise = false
         lastHipCenterY = nil
         lastHipTimestamp = nil
+        lowPostureStartedAt = nil
+        baselineHipY = nil
+        baselineShoulderY = nil
+        stablePoseFrameStreak = 0
+        lostStablePoseFrameStreak = 0
+        trackingDegradeWindowRemaining = 0
+        preDegradeHipY = nil
+        trackingLossConditionStartedAt = nil
+        isSafetyEscalating = false
     }
 }

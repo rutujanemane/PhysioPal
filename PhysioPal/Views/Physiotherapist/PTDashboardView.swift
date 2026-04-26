@@ -12,6 +12,7 @@ private enum PTColors {
 
 struct PTDashboardView: View {
     @StateObject private var viewModel = PhysiotherapistDashboardViewModel()
+    @ObservedObject private var incidentStore = IncidentStore.shared
     @State private var appeared = false
 
     var body: some View {
@@ -63,6 +64,7 @@ struct PTDashboardView: View {
                 routineManagementSection
                 healthMetricsSection
                 readinessCard
+                incidentsSection
                 weeklyOverview
                 recentSessionsSection
 
@@ -335,6 +337,47 @@ struct PTDashboardView: View {
     }
 
     // MARK: - Weekly Overview
+
+    private var incidentsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(title: "Incidents", icon: "exclamationmark.shield.fill")
+
+            if incidentStore.incidents.isEmpty {
+                noDataCard(message: "No incidents have been reported.")
+            } else {
+                ForEach(incidentStore.incidents.prefix(5)) { incident in
+                    HStack(spacing: 0) {
+                        accentBar(color: AppColors.secondary)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(incident.title)
+                                    .font(AppFonts.bodyBold)
+                                    .foregroundStyle(AppColors.textPrimary)
+                                Spacer()
+                                Text(timeAgoString(from: incident.createdAt))
+                                    .font(AppFonts.caption)
+                                    .foregroundStyle(AppColors.textSecondary)
+                            }
+                            Text(incident.details)
+                                .font(AppFonts.caption)
+                                .foregroundStyle(AppColors.textSecondary)
+                                .lineSpacing(4)
+                            Text("Shared clips: \(incident.sharedVideoCount)")
+                                .font(AppFonts.caption)
+                                .foregroundStyle(AppColors.primary)
+                        }
+                        .padding(AppLayout.cardPadding)
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: AppLayout.cardRadius)
+                            .fill(PTColors.cardBackground)
+                            .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: AppLayout.cardRadius))
+                }
+            }
+        }
+    }
 
     private var weeklyOverview: some View {
         VStack(alignment: .leading, spacing: 14) {
