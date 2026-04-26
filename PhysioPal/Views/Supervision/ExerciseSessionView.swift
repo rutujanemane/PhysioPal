@@ -5,7 +5,7 @@ import Combine
 struct ExerciseSessionView: View {
     let routine: ExerciseRoutine
     let onComplete: (SessionSummary) -> Void
-    let onEscalate: () -> Void
+    let onEscalate: (SessionSummary, Int) -> Void
     let onBack: () -> Void
 
     @StateObject private var viewModel: SupervisionViewModel
@@ -22,7 +22,7 @@ struct ExerciseSessionView: View {
     init(
         routine: ExerciseRoutine,
         onComplete: @escaping (SessionSummary) -> Void,
-        onEscalate: @escaping () -> Void,
+        onEscalate: @escaping (SessionSummary, Int) -> Void,
         onBack: @escaping () -> Void
     ) {
         self.routine = routine
@@ -345,9 +345,9 @@ struct ExerciseSessionView: View {
         let summary = viewModel.buildSummary()
         let markShared = exit == .escalation
         let finalize: () -> Void = {
+            var sharedCount = 0
             if exit == .escalation {
-                let sharedCount = SessionVideoStore.shared.markVideosShared(forSessionStartTime: summary.startTime)
-                IncidentStore.shared.recordEscalation(summary: summary, sharedVideoCount: sharedCount)
+                sharedCount = SessionVideoStore.shared.markVideosShared(forSessionStartTime: summary.startTime)
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                 viewModel.stop()
@@ -355,7 +355,7 @@ struct ExerciseSessionView: View {
                 case .complete, .manualStop:
                     onComplete(summary)
                 case .escalation:
-                    onEscalate()
+                    onEscalate(summary, sharedCount)
                 case .back:
                     onBack()
                 }
