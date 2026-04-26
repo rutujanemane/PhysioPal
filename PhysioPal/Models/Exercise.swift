@@ -47,7 +47,7 @@ extension Exercise {
         Exercise(
             id: "deep-squat",
             name: "Deep Squats",
-            description: "Stand with feet shoulder-width apart, lower your hips until thighs are parallel to the ground.",
+            description: "Stand tall and start with your right side leading. Lower slowly like sitting back into a chair, then rise with control.",
             iconName: "figure.strengthtraining.traditional",
             standardReps: 15,
             reducedReps: 10,
@@ -55,20 +55,20 @@ extension Exercise {
             formRules: [
                 FormRule(
                     jointTriplet: (.leftHip, .leftKnee, .leftAnkle),
-                    acceptableRange: 70...110,
-                    correctionMessage: "Let's adjust your knee bend — aim for a right angle"
+                    acceptableRange: 55...130,
+                    correctionMessage: "Great effort. Let's bend a little deeper through the knees."
                 ),
                 FormRule(
                     jointTriplet: (.leftShoulder, .leftHip, .leftKnee),
-                    acceptableRange: 60...100,
-                    correctionMessage: "Try keeping your back a bit more upright"
+                    acceptableRange: 45...120,
+                    correctionMessage: "Let's keep your chest a bit taller as you go down."
                 )
             ]
         ),
         Exercise(
             id: "chair-squat",
             name: "Chair-Assisted Squats",
-            description: "Using a chair for support, gently lower yourself and stand back up.",
+            description: "Sit and stand with a chair behind you. Start gently and press up through your legs at a steady pace.",
             iconName: "chair.fill",
             standardReps: 10,
             reducedReps: 6,
@@ -76,50 +76,50 @@ extension Exercise {
             formRules: [
                 FormRule(
                     jointTriplet: (.leftHip, .leftKnee, .leftAnkle),
-                    acceptableRange: 80...120,
-                    correctionMessage: "Let's adjust your knee angle a little"
+                    acceptableRange: 60...140,
+                    correctionMessage: "Nice work. Let's line up the knee and ankle a little better."
                 )
             ]
         ),
         Exercise(
-            id: "standing-leg-raise",
-            name: "Standing Leg Raises",
-            description: "Stand tall and slowly raise one leg to the side, then lower it back down.",
-            iconName: "figure.walk",
+            id: "standing-hip-abduction",
+            name: "Standing Hip Abduction",
+            description: "Hold a chair for balance. Start with your right leg and move it out to the side, then return slowly.",
+            iconName: "figure.cooldown",
             standardReps: 12,
             reducedReps: 8,
             easierVariantID: nil,
             formRules: [
                 FormRule(
                     jointTriplet: (.leftHip, .leftKnee, .leftAnkle),
-                    acceptableRange: 150...180,
-                    correctionMessage: "Try to keep your raised leg a bit straighter"
+                    acceptableRange: 135...180,
+                    correctionMessage: "Let's keep the moving leg straighter as it lifts."
                 ),
                 FormRule(
                     jointTriplet: (.leftShoulder, .leftHip, .leftKnee),
-                    acceptableRange: 140...180,
-                    correctionMessage: "Keep your torso upright — try not to lean"
+                    acceptableRange: 125...180,
+                    correctionMessage: "You're doing well. Keep your body upright and avoid leaning."
                 )
             ]
         ),
         Exercise(
-            id: "wall-pushup",
-            name: "Wall Push-Ups",
-            description: "Place hands on a wall at shoulder height, lower your chest toward the wall, then push back.",
-            iconName: "figure.strengthtraining.functional",
+            id: "seated-knee-extension",
+            name: "Seated Knee Extensions",
+            description: "Sit tall in a chair. Start with your right leg and gently straighten your knee, then lower with control.",
+            iconName: "figure.seated.side",
             standardReps: 12,
             reducedReps: 8,
             easierVariantID: nil,
             formRules: [
                 FormRule(
-                    jointTriplet: (.leftShoulder, .leftElbow, .leftWrist),
-                    acceptableRange: 70...120,
-                    correctionMessage: "Let's adjust your elbow angle — bend a little more"
+                    jointTriplet: (.leftHip, .leftKnee, .leftAnkle),
+                    acceptableRange: 130...180,
+                    correctionMessage: "Nice pace. Try straightening the kicking leg a little more."
                 ),
                 FormRule(
                     jointTriplet: (.leftShoulder, .leftHip, .leftAnkle),
-                    acceptableRange: 160...180,
-                    correctionMessage: "Try keeping your body in a straight line"
+                    acceptableRange: 60...125,
+                    correctionMessage: "Let's stay tall in the chair and keep your posture relaxed."
                 )
             ]
         )
