@@ -13,12 +13,14 @@ final class SupervisionViewModel: ObservableObject {
     @Published private(set) var activePoseSource: PoseSourceMode = .melange
 
     private let poseProvider: PoseProviderProtocol
-    private let evaluator = ExerciseEvaluator()
+    private let evaluator = ExerciseEvaluator(requiredConsecutiveFrames: 4)
+    private let poseSmoothing = PoseSmoothing(windowSize: 5, alpha: 0.4)
     private let sessionStartTime = Date()
 
     private var lastEvaluationCorrect = true
     private var completionSent = false
-    private var repHasViolation = false
+    private var repViolationFrames = 0
+    private var repTotalDownFrames = 0
     private var repSawTrustedDownFrame = false
     private var lastVoiceCue: String?
     private var escalationLockedExerciseIndex: Int?
@@ -147,15 +149,16 @@ final class SupervisionViewModel: ObservableObject {
 
     private func process(frame: PoseFrame) {
         guard let idx = activeExerciseIndex else { return }
+        let smoothedFrame = poseSmoothing.smooth(frame: frame)
         let requiredForForm: [JointID] = [.leftShoulder, .leftHip, .leftKnee, .leftAnkle]
-        let hasFormJoints = requiredForForm.allSatisfy { frame.landmark(for: $0) != nil }
-        let formConfidence = meanConfidence(frame, joints: requiredForForm)
+        let hasFormJoints = requiredForForm.allSatisfy { smoothedFrame.landmark(for: $0) != nil }
+        let formConfidence = meanConfidence(smoothedFrame, joints: requiredForForm)
         let poseTrustedForForm = hasFormJoints && formConfidence >= 0.35
-        currentPoseFrame = frame
-        let kneeY = frame.landmark(for: .leftKnee)?.position.y ?? 0.5
+        currentPoseFrame = smoothedFrame
+        let kneeY = smoothedFrame.landmark(for: .leftKnee)?.position.y ?? 0.5
         let exercise = routineExercises[idx].exercise
         let useSquatAngleReps = Self.usesSquatStyleRepCounting(exercise)
-        let kneeAngle = bestKneeAngleDegrees(from: frame)
+        let kneeAngle = bestKneeAngleDegrees(from: smoothedFrame)
         let isDownForForm: Bool = {
             if useSquatAngleReps, let a = kneeAngle {
                 return a < 140
@@ -163,11 +166,10 @@ final class SupervisionViewModel: ObservableObject {
             return kneeY > 0.62
         }()
 
-        // Evaluate form only during the active squat/down phase.
-        // Standing frames should not count as posture failures.
         if isDownForForm, poseTrustedForForm {
             repSawTrustedDownFrame = true
-            let evaluation = evaluator.evaluate(frame: frame, exercise: exercise)
+            repTotalDownFrames += 1
+            let evaluation = evaluator.evaluate(frame: smoothedFrame, exercise: exercise)
             highlightedJoints = Set(evaluation.violations.map(\.joint))
             lastEvaluationCorrect = evaluation.isCorrect
 
@@ -175,9 +177,9 @@ final class SupervisionViewModel: ObservableObject {
                 feedbackMessage = nil
                 lastVoiceCue = nil
             } else {
+                repViolationFrames += 1
                 let msg = evaluation.violations.first?.rule.correctionMessage
                     ?? "Let's make a small posture adjustment."
-                // #region agent log
                 AgentDebugLog.append(
                     hypothesisId: "H_voice",
                     location: "SupervisionViewModel.process",
@@ -189,10 +191,8 @@ final class SupervisionViewModel: ObservableObject {
                     ],
                     runId: "pre-fix"
                 )
-                // #endregion
                 if msg != lastVoiceCue {
                     lastVoiceCue = msg
-                    // #region agent log
                     AgentDebugLog.append(
                         hypothesisId: "H_voice",
                         location: "SupervisionViewModel.process",
@@ -200,11 +200,9 @@ final class SupervisionViewModel: ObservableObject {
                         data: ["message": msg],
                         runId: "pre-fix"
                     )
-                    // #endregion
                     VoiceGuidanceService.shared.speak(msg)
                 }
                 feedbackMessage = msg
-                repHasViolation = true
             }
         } else {
             highlightedJoints = []
@@ -308,12 +306,13 @@ final class SupervisionViewModel: ObservableObject {
     private func registerRep(for idx: Int) {
         let failuresBeforeScoring = routineExercises[idx].consecutiveFailures
         routineExercises[idx].completedReps += 1
-        let needed: [JointID] = [.leftShoulder, .leftHip, .leftKnee, .leftAnkle]
-        let available = currentPoseFrame.map { frame in
-            needed.filter { frame.landmark(for: $0) != nil }.map(\.rawValue)
-        } ?? []
-        // #region agent log
-        print("[SupervisionViewModel][H7] rep registered exerciseIndex=\(idx) completed=\(routineExercises[idx].completedReps)/\(routineExercises[idx].targetReps) hasViolation=\(repHasViolation) lastEvalCorrect=\(lastEvaluationCorrect) requiredJointsPresent=\(available)")
+
+        let violationRatio = repTotalDownFrames > 0
+            ? Double(repViolationFrames) / Double(repTotalDownFrames)
+            : 0.0
+        let repHadBadForm = violationRatio > 0.4
+
+        print("[SupervisionViewModel][H7] rep registered exerciseIndex=\(idx) completed=\(routineExercises[idx].completedReps)/\(routineExercises[idx].targetReps) violationRatio=\(String(format: "%.2f", violationRatio)) badForm=\(repHadBadForm)")
         AgentDebugLog.append(
             hypothesisId: "H_rep",
             location: "SupervisionViewModel.registerRep",
@@ -323,35 +322,38 @@ final class SupervisionViewModel: ObservableObject {
                 "exerciseId": routineExercises[idx].exercise.id,
                 "completed": "\(routineExercises[idx].completedReps)",
                 "target": "\(routineExercises[idx].targetReps)",
+                "violationFrames": "\(repViolationFrames)",
+                "totalDownFrames": "\(repTotalDownFrames)",
+                "violationRatio": String(format: "%.2f", violationRatio),
                 "failuresBeforeScoring": "\(failuresBeforeScoring)",
                 "exerciseJustFinished": "\(routineExercises[idx].isComplete)"
             ],
             runId: "pre-fix"
         )
-        // #endregion
+
         let shouldScoreForm = repSawTrustedDownFrame
-        if shouldScoreForm && !repHasViolation && lastEvaluationCorrect {
+        if shouldScoreForm && !repHadBadForm {
             routineExercises[idx].correctFormReps += 1
             routineExercises[idx].consecutiveFailures = 0
             repPulseToken += 1
         } else if shouldScoreForm {
             routineExercises[idx].consecutiveFailures += 1
         }
-        // #region agent log
         AgentDebugLog.append(
             hypothesisId: "H_form_score",
             location: "SupervisionViewModel.registerRep",
             message: "form_scoring",
             data: [
                 "shouldScoreForm": shouldScoreForm ? "true" : "false",
-                "hadViolation": repHasViolation ? "true" : "false",
-                "lastEvalCorrect": lastEvaluationCorrect ? "true" : "false",
+                "hadBadForm": repHadBadForm ? "true" : "false",
+                "violationRatio": String(format: "%.2f", violationRatio),
                 "failuresAfter": "\(routineExercises[idx].consecutiveFailures)"
             ],
             runId: "pre-fix"
         )
-        // #endregion
-        repHasViolation = false
+
+        repViolationFrames = 0
+        repTotalDownFrames = 0
         repSawTrustedDownFrame = false
 
         if routineExercises[idx].isComplete {
@@ -362,7 +364,8 @@ final class SupervisionViewModel: ObservableObject {
             highlightedJoints = []
             feedbackMessage = nil
             lastEvaluationCorrect = true
-            repHasViolation = false
+            repViolationFrames = 0
+            repTotalDownFrames = 0
             repSawTrustedDownFrame = false
             trustedDownFrameStreak = 0
             trustedUpFrameStreak = 0
@@ -370,6 +373,8 @@ final class SupervisionViewModel: ObservableObject {
             lastVoiceCue = nil
             squatRepDetector.reset()
             verticalKneeRepDetector.reset()
+            evaluator.reset()
+            poseSmoothing.reset()
             escalationLockedExerciseIndex = nil
         }
     }

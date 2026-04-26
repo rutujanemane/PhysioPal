@@ -55,12 +55,12 @@ extension Exercise {
             formRules: [
                 FormRule(
                     jointTriplet: (.leftHip, .leftKnee, .leftAnkle),
-                    acceptableRange: 70...110,
+                    acceptableRange: 55...130,
                     correctionMessage: "Let's adjust your knee bend — aim for a right angle"
                 ),
                 FormRule(
                     jointTriplet: (.leftShoulder, .leftHip, .leftKnee),
-                    acceptableRange: 60...100,
+                    acceptableRange: 45...120,
                     correctionMessage: "Try keeping your back a bit more upright"
                 )
             ]
@@ -76,7 +76,7 @@ extension Exercise {
             formRules: [
                 FormRule(
                     jointTriplet: (.leftHip, .leftKnee, .leftAnkle),
-                    acceptableRange: 80...120,
+                    acceptableRange: 60...140,
                     correctionMessage: "Let's adjust your knee angle a little"
                 )
             ]
@@ -92,12 +92,12 @@ extension Exercise {
             formRules: [
                 FormRule(
                     jointTriplet: (.leftHip, .leftKnee, .leftAnkle),
-                    acceptableRange: 150...180,
+                    acceptableRange: 135...180,
                     correctionMessage: "Try to keep your raised leg a bit straighter"
                 ),
                 FormRule(
                     jointTriplet: (.leftShoulder, .leftHip, .leftKnee),
-                    acceptableRange: 140...180,
+                    acceptableRange: 125...180,
                     correctionMessage: "Keep your torso upright — try not to lean"
                 )
             ]
@@ -113,12 +113,12 @@ extension Exercise {
             formRules: [
                 FormRule(
                     jointTriplet: (.leftShoulder, .leftElbow, .leftWrist),
-                    acceptableRange: 70...120,
+                    acceptableRange: 55...140,
                     correctionMessage: "Let's adjust your elbow angle — bend a little more"
                 ),
                 FormRule(
                     jointTriplet: (.leftShoulder, .leftHip, .leftAnkle),
-                    acceptableRange: 160...180,
+                    acceptableRange: 145...180,
                     correctionMessage: "Try keeping your body in a straight line"
                 )
             ]
