@@ -51,7 +51,7 @@ struct DoctorsNoteCard: View {
     }
 
     private var explanationSection: some View {
-        Text(readiness.explanation)
+        Text(routine.readinessReason ?? readiness.explanation)
             .font(AppFonts.doctorsNote)
             .foregroundStyle(AppColors.textPrimary)
             .lineSpacing(8)

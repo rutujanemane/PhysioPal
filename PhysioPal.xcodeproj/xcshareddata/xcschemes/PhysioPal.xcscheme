@@ -54,8 +54,13 @@
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "MELANGE_PERSONAL_KEY"
-            value = "__SET_LOCALLY__"
-            isEnabled = "NO">
+            value = "ztp_47d5c7b452dc45c38d1f4aed7064aa90"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = ""
+            value = ""
+            isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>
    </LaunchAction>

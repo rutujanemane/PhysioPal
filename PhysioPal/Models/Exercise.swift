@@ -207,4 +207,15 @@ extension Exercise {
     static func find(byID id: String) -> Exercise? {
         library.first { $0.id == id }
     }
+
+    static func intensityLevel(for exerciseID: String) -> String {
+        switch exerciseID {
+        case "deep-squat", "sit-to-stand":
+            return "high"
+        case "chair-squat", "standing-hamstring-curl", "standing-hip-abduction":
+            return "moderate"
+        default:
+            return "low"
+        }
+    }
 }
