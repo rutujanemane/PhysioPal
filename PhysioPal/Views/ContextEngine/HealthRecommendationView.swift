@@ -224,10 +224,26 @@ struct HealthRecommendationView: View {
                 Spacer()
             }
 
-            Text(voicePTVM.responseText)
-                .font(AppFonts.body)
-                .foregroundStyle(AppColors.textPrimary)
-                .lineSpacing(6)
+            if voicePTVM.isAnalyzing {
+                HStack(spacing: 12) {
+                    ProgressView()
+                        .tint(AppColors.primary)
+                    Text(voicePTVM.responseText)
+                        .font(AppFonts.body)
+                        .foregroundStyle(AppColors.textSecondary)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(AppColors.primary.opacity(0.08))
+                )
+            } else {
+                Text(voicePTVM.responseText)
+                    .font(AppFonts.body)
+                    .foregroundStyle(AppColors.textPrimary)
+                    .lineSpacing(6)
+            }
 
             if !voicePTVM.transcript.isEmpty {
                 Text("You said: \"\(voicePTVM.transcript)\"")
@@ -386,7 +402,7 @@ struct HealthRecommendationView: View {
         switch hour {
         case 5..<12: return "Good morning"
         case 12..<17: return "Good afternoon"
-        default: return "Good evening"
+        default: return "Good morning"
         }
     }
 }

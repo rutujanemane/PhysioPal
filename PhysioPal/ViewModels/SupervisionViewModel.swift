@@ -49,6 +49,9 @@ final class SupervisionViewModel: ObservableObject {
     private var lowPostureStartedAt: TimeInterval?
     private var baselineHipY: CGFloat?
     private var baselineShoulderY: CGFloat?
+    private var hipYWindow: [(y: CGFloat, t: TimeInterval)] = []
+    private var shoulderYWindow: [(y: CGFloat, t: TimeInterval)] = []
+    private let fallWindowDuration: TimeInterval = 0.8
     private var stablePoseFrameStreak = 0
     private var lostStablePoseFrameStreak = 0
     private var trackingDegradeWindowRemaining = 0
@@ -404,9 +407,10 @@ final class SupervisionViewModel: ObservableObject {
         let hips = [frame.landmark(for: .leftHip), frame.landmark(for: .rightHip)].compactMap { $0 }
         let shoulders = [frame.landmark(for: .leftShoulder), frame.landmark(for: .rightShoulder)].compactMap { $0 }
         guard !hips.isEmpty, !shoulders.isEmpty else { return }
-        let meanConfidence = (hips.map(\.confidence).reduce(0, +) + shoulders.map(\.confidence).reduce(0, +))
+        let conf = (hips.map(\.confidence).reduce(0, +) + shoulders.map(\.confidence).reduce(0, +))
             / Float(hips.count + shoulders.count)
-        guard meanConfidence >= 0.22 else { return }
+        guard conf >= 0.18 else { return }
+
         let hipY = hips.map(\.position.y).reduce(0, +) / CGFloat(hips.count)
         let shoulderY = shoulders.map(\.position.y).reduce(0, +) / CGFloat(shoulders.count)
 
@@ -421,36 +425,65 @@ final class SupervisionViewModel: ObservableObject {
             baselineShoulderY = shoulderY
         }
 
+        hipYWindow.append((y: hipY, t: now))
+        shoulderYWindow.append((y: shoulderY, t: now))
+        hipYWindow.removeAll { now - $0.t > fallWindowDuration }
+        shoulderYWindow.removeAll { now - $0.t > fallWindowDuration }
+
         defer {
             lastHipCenterY = hipY
             lastHipTimestamp = now
         }
 
-        guard let previousHipY = lastHipCenterY, let previousTimestamp = lastHipTimestamp else {
-            return
-        }
+        guard hipYWindow.count >= 3 else { return }
 
-        let deltaTime = now - previousTimestamp
-        let deltaY = hipY - previousHipY
-        let suddenDrop = deltaTime > 0.05 && deltaTime < 0.45 && deltaY > 0.18
-        let lowPosture = hipY > 0.66 && shoulderY > 0.50
-        let relativeHipDrop = hipY - (baselineHipY ?? hipY)
-        let relativeShoulderDrop = shoulderY - (baselineShoulderY ?? shoulderY)
-        let strongRelativeDrop = relativeHipDrop > 0.12 && relativeShoulderDrop > 0.08
+        // Signal 1: Peak-to-current hip drop over the sliding window
+        let peakHipY = hipYWindow.map(\.y).min()!
+        let windowHipDrop = hipY - peakHipY
+        let peakShoulderY = shoulderYWindow.map(\.y).min()!
+        let windowShoulderDrop = shoulderY - peakShoulderY
+        let windowSpan = now - hipYWindow.first!.t
+        let rapidDrop = windowHipDrop > 0.14 && windowSpan > 0.08 && windowSpan <= fallWindowDuration
+
+        // Signal 2: Coordinated body drop (both hip and shoulder falling together)
+        let coordinatedDrop = windowHipDrop > 0.10 && windowShoulderDrop > 0.07
+
+        // Signal 3: Sustained low posture
+        let lowPosture = hipY > 0.65 && shoulderY > 0.48
         if lowPosture {
-            if lowPostureStartedAt == nil {
-                lowPostureStartedAt = now
-            }
+            if lowPostureStartedAt == nil { lowPostureStartedAt = now }
         } else {
             lowPostureStartedAt = nil
         }
+        let sustainedLow = (lowPostureStartedAt.map { now - $0 } ?? 0) > 1.0
 
-        let sustainedLowPosture = (lowPostureStartedAt.map { now - $0 } ?? 0) > 0.7
-        let veryLowShoulders = shoulderY > 0.58
-        let gradualDrop = deltaTime > 0.2 && deltaTime < 1.2 && deltaY > 0.08
-        let slowCollapseRisk = sustainedLowPosture && veryLowShoulders && (gradualDrop || strongRelativeDrop)
+        // Signal 4: Torso collapse (shoulder-hip gap shrinks, person crumpling)
+        let torsoGap = hipY - shoulderY
+        let torsoCollapse = torsoGap < 0.06 && hipY > 0.55
 
-        guard (suddenDrop && (lowPosture || strongRelativeDrop)) || slowCollapseRisk else { return }
+        // Signal 5: Frame-to-frame sudden drop (keep as supplementary)
+        let frameDrop: Bool = {
+            guard let prevY = lastHipCenterY, let prevT = lastHipTimestamp else { return false }
+            let dt = now - prevT
+            let dy = hipY - prevY
+            return dt > 0.04 && dt < 0.5 && dy > 0.15
+        }()
+
+        // Signal 6: Strong relative drop from baseline
+        let relHipDrop = hipY - (baselineHipY ?? hipY)
+        let relShoulderDrop = shoulderY - (baselineShoulderY ?? shoulderY)
+        let strongRelativeDrop = relHipDrop > 0.12 && relShoulderDrop > 0.08
+
+        // Trigger: require multiple confirming signals
+        let triggered =
+            (rapidDrop && (lowPosture || coordinatedDrop || strongRelativeDrop))
+            || (frameDrop && (lowPosture || coordinatedDrop))
+            || (sustainedLow && (torsoCollapse || coordinatedDrop))
+            || (rapidDrop && torsoCollapse)
+
+        guard triggered else { return }
+
+        print("[FallDetection] TRIGGERED — hipDrop=\(String(format: "%.3f", windowHipDrop)) shoulderDrop=\(String(format: "%.3f", windowShoulderDrop)) hipY=\(String(format: "%.3f", hipY)) shoulderY=\(String(format: "%.3f", shoulderY)) torsoGap=\(String(format: "%.3f", torsoGap)) sustainedLow=\(sustainedLow) frameDrop=\(frameDrop)")
 
         requestImmediateEscalation(
             message: "It looks like you may need support. Let's get help.",
@@ -564,6 +597,8 @@ final class SupervisionViewModel: ObservableObject {
         lowPostureStartedAt = nil
         baselineHipY = nil
         baselineShoulderY = nil
+        hipYWindow = []
+        shoulderYWindow = []
         stablePoseFrameStreak = 0
         lostStablePoseFrameStreak = 0
         trackingDegradeWindowRemaining = 0

@@ -71,24 +71,33 @@ final class ContextEngineViewModel: ObservableObject {
                 self.llmStatus = .downloading(progress)
             }
 
-        let llmResult: LLMRoutineResult? = await withTaskGroup(of: LLMRoutineResult?.self) { group in
-            group.addTask { @MainActor in
+        let llmResult: LLMRoutineResult? = await withCheckedContinuation { continuation in
+            var hasResumed = false
+            let lock = NSLock()
+            func resumeOnce(_ value: LLMRoutineResult?) {
+                lock.lock()
+                defer { lock.unlock() }
+                guard !hasResumed else { return }
+                hasResumed = true
+                continuation.resume(returning: value)
+            }
+
+            DispatchQueue.global().asyncAfter(deadline: .now() + 4.0) {
+                resumeOnce(nil)
+            }
+
+            Task { @MainActor in
                 await self.llmService.initializeModel()
-                guard self.llmService.isModelReady else { return nil }
-                return await self.llmService.adaptRoutine(
+                guard self.llmService.isModelReady else {
+                    resumeOnce(nil)
+                    return
+                }
+                let result = await self.llmService.adaptRoutine(
                     health: assessment,
                     assignedExercises: store.assignedExercises
                 )
+                resumeOnce(result)
             }
-            group.addTask {
-                try? await Task.sleep(nanoseconds: 10_000_000_000)
-                return nil
-            }
-            for await result in group {
-                group.cancelAll()
-                return result
-            }
-            return nil
         }
 
         let finalResult: LLMRoutineResult

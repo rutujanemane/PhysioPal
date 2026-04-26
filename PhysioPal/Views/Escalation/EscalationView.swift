@@ -4,7 +4,13 @@ import AVKit
 struct EscalationView: View {
     @StateObject private var viewModel = EscalationViewModel()
     @ObservedObject private var videoStore = SessionVideoStore.shared
+    let exerciseName: String?
     let onDismiss: () -> Void
+
+    init(exerciseName: String? = nil, onDismiss: @escaping () -> Void) {
+        self.exerciseName = exerciseName
+        self.onDismiss = onDismiss
+    }
 
     @State private var appeared = false
     @State private var showVideoPlayer = false
@@ -51,14 +57,19 @@ struct EscalationView: View {
                 startedAutoCall = true
                 Task {
                     await viewModel.callPhysiotherapist(
-                        contextMessage: "Urgent incident detected. Please check incidents of the patient."
+                        exerciseName: exerciseName ?? "general check-in",
+                        context: exerciseName != nil ? "Fall risk detected during exercise" : nil
                     )
                 }
             }
         }
         .alert("Couldn't connect the call", isPresented: $viewModel.showError) {
             Button("Try Again") {
-                Task { await viewModel.callPhysiotherapist() }
+                Task {
+                    await viewModel.callPhysiotherapist(
+                        exerciseName: exerciseName ?? "general check-in"
+                    )
+                }
             }
             Button("Go Back", role: .cancel) {
                 onDismiss()
@@ -312,7 +323,11 @@ struct EscalationView: View {
     private var actionButtons: some View {
         VStack(spacing: AppLayout.elementSpacing) {
             Button {
-                Task { await viewModel.callPhysiotherapist() }
+                Task {
+                    await viewModel.callPhysiotherapist(
+                        exerciseName: exerciseName ?? "general check-in"
+                    )
+                }
             } label: {
                 HStack(spacing: 12) {
                     if viewModel.callState == .calling {
