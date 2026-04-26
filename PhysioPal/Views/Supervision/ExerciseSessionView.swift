@@ -169,24 +169,6 @@ struct ExerciseSessionView: View {
         .onReceive(viewModel.$routineExercises) { _ in
             guard !viewModel.isSessionComplete else { return }
             if viewModel.shouldEscalate() {
-                // #region agent log
-                let idx = viewModel.currentExerciseIndex
-                let exerciseId = viewModel.currentExercise?.exercise.id ?? "none"
-                let completed = viewModel.currentExercise?.completedReps ?? -1
-                let failures = viewModel.currentExercise?.consecutiveFailures ?? -1
-                AgentDebugLog.append(
-                    hypothesisId: "H_escalate_flow",
-                    location: "ExerciseSessionView.onReceive",
-                    message: "escalation_transition",
-                    data: [
-                        "exerciseIndex": "\(idx)",
-                        "exerciseId": exerciseId,
-                        "completedReps": "\(completed)",
-                        "consecutiveFailures": "\(failures)"
-                    ],
-                    runId: "pre-fix"
-                )
-                // #endregion
                 viewModel.markEscalationHandled()
                 onEscalate()
             }

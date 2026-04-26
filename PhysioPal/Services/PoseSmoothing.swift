@@ -1,58 +1,49 @@
 import CoreGraphics
 import Foundation
 
+/// Smooths pose landmarks to reduce frame-level jitter while preserving movement.
 final class PoseSmoothing {
-    private var history: [JointID: [CGPoint]] = [:]
-    private let windowSize: Int
     private let alpha: CGFloat
+    private let windowSize: Int
+    private var history: [JointID: [PoseLandmark]] = [:]
 
-    init(windowSize: Int = 5, alpha: CGFloat = 0.4) {
-        self.windowSize = windowSize
+    init(alpha: CGFloat = 0.4, windowSize: Int = 5) {
         self.alpha = alpha
+        self.windowSize = windowSize
     }
 
     func smooth(frame: PoseFrame) -> PoseFrame {
-        var smoothedLandmarks: [JointID: PoseLandmark] = [:]
+        var smoothed: [JointID: PoseLandmark] = [:]
 
         for (joint, landmark) in frame.landmarks {
             var buffer = history[joint] ?? []
-            buffer.append(landmark.position)
+            buffer.append(landmark)
             if buffer.count > windowSize {
                 buffer.removeFirst(buffer.count - windowSize)
             }
             history[joint] = buffer
 
-            let smoothedPosition: CGPoint
-            if buffer.count < 2 {
-                smoothedPosition = landmark.position
-            } else {
-                smoothedPosition = exponentialMovingAverage(buffer)
+            var ema = buffer[0].position
+            if buffer.count > 1 {
+                for sample in buffer.dropFirst() {
+                    ema = CGPoint(
+                        x: alpha * sample.position.x + (1 - alpha) * ema.x,
+                        y: alpha * sample.position.y + (1 - alpha) * ema.y
+                    )
+                }
             }
 
-            smoothedLandmarks[joint] = PoseLandmark(
-                joint: joint,
-                position: smoothedPosition,
+            smoothed[joint] = PoseLandmark(
+                joint: landmark.joint,
+                position: ema,
                 confidence: landmark.confidence
             )
         }
 
-        return PoseFrame(landmarks: smoothedLandmarks, timestamp: frame.timestamp)
+        return PoseFrame(landmarks: smoothed, timestamp: frame.timestamp)
     }
 
     func reset() {
         history.removeAll()
-    }
-
-    private func exponentialMovingAverage(_ points: [CGPoint]) -> CGPoint {
-        guard let first = points.first else { return .zero }
-        var emaX = first.x
-        var emaY = first.y
-
-        for point in points.dropFirst() {
-            emaX = alpha * point.x + (1 - alpha) * emaX
-            emaY = alpha * point.y + (1 - alpha) * emaY
-        }
-
-        return CGPoint(x: emaX, y: emaY)
     }
 }
