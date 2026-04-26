@@ -266,7 +266,8 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
                             )
                             // #endregion
                         }
-                        if self.inferenceFailureCount >= 20 {
+                        let fallbackThreshold = self.successfulFrameCount == 0 ? 4 : 8
+                        if self.inferenceFailureCount >= fallbackThreshold {
                             print("[MelangePoseProvider] Implausible Melange frames persisted. Switching to Vision fallback.")
                             self.activateFallback()
                         } else {
@@ -304,7 +305,7 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
                     self.inferenceFailureCount += 1
                     // Avoid bouncing to fallback too aggressively for transient frames.
                     // Only switch if we fail repeatedly before producing any usable frame.
-                    if self.successfulFrameCount == 0, self.inferenceFailureCount >= 30 {
+                    if self.successfulFrameCount == 0, self.inferenceFailureCount >= 10 {
                         print("[MelangePoseProvider] Landmark parse unavailable for extended warmup. Switching to Vision fallback.")
                         self.activateFallback()
                     }
@@ -318,7 +319,7 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
                     self.melangeInferenceDisabled = true
                     print("[MelangePoseProvider] Disabled Melange inference due to input signature mismatch.")
                 }
-                if self.successfulFrameCount == 0, self.inferenceFailureCount >= 12 {
+                if self.successfulFrameCount == 0, self.inferenceFailureCount >= 8 {
                     print("[MelangePoseProvider] Repeated inference errors. Switching to Vision fallback.")
                     self.activateFallback()
                 }
