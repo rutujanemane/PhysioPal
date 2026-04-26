@@ -182,12 +182,39 @@ final class ContextEngineViewModel: ObservableObject {
         return LLMRoutineResult(exercises: decisions, note: note)
     }
 
+    func buildSingleExerciseRoutine(exerciseID: String) -> ExerciseRoutine? {
+        guard let baseExercise = Exercise.find(byID: exerciseID) else { return nil }
+        let readiness = readiness ?? .noHealthData
+        let shouldReduce = readiness.level.shouldReduceRoutine
+        let selectedExercise: Exercise
+        let reps: Int
+
+        if shouldReduce, let variantID = baseExercise.easierVariantID,
+           let variant = Exercise.find(byID: variantID) {
+            selectedExercise = variant
+            reps = variant.reducedReps
+        } else if shouldReduce {
+            selectedExercise = baseExercise
+            reps = baseExercise.reducedReps
+        } else {
+            selectedExercise = baseExercise
+            reps = baseExercise.standardReps
+        }
+
+        return ExerciseRoutine(
+            exercises: [RoutineExercise(exercise: selectedExercise, targetReps: reps)],
+            isReduced: shouldReduce,
+            readinessReason: readiness.explanation
+        )
+    }
+
     private func buildRuleBasedRoutine(for readiness: HealthReadiness) -> ExerciseRoutine? {
         let store = RoutineStore.shared
         guard store.hasAssignedRoutine else { return nil }
 
         let shouldReduce = readiness.level.shouldReduceRoutine
         var routineExercises: [RoutineExercise] = []
+        var addedExerciseIDs = Set<String>()
 
         for item in store.assignedExercises {
             guard let baseExercise = Exercise.find(byID: item.exerciseID) else { continue }
@@ -206,6 +233,9 @@ final class ContextEngineViewModel: ObservableObject {
                 exercise = baseExercise
                 reps = item.targetReps
             }
+
+            guard !addedExerciseIDs.contains(exercise.id) else { continue }
+            addedExerciseIDs.insert(exercise.id)
 
             routineExercises.append(
                 RoutineExercise(exercise: exercise, targetReps: reps)

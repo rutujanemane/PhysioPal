@@ -1,12 +1,17 @@
 import Combine
+import AVKit
 import SwiftUI
 
 struct HomeView: View {
     @StateObject private var sessionStore = SessionStore.shared
     @StateObject private var routineStore = RoutineStore.shared
+    @ObservedObject private var videoStore = SessionVideoStore.shared
     @State private var healthMetrics: HealthReadiness?
     @State private var isLoadingHealth = true
     @State private var appeared = false
+    @State private var showVideoPlayer = false
+    @State private var showDeleteConfirm = false
+    @State private var showSharedToast = false
 
     private let patient = PatientProfile.mock
 
@@ -23,6 +28,7 @@ struct HomeView: View {
                     healthSnapshotSection
                     myProgressSection
                     recentSessionsSection
+                    myVideoSection
                     achievementsSection
                     quickActionsSection
 
@@ -41,6 +47,35 @@ struct HomeView: View {
             isLoadingHealth = true
             healthMetrics = await HealthKitManager.shared.assessReadiness()
             isLoadingHealth = false
+        }
+        .sheet(isPresented: $showVideoPlayer) {
+            if let url = videoStore.latestVideo?.fileURL {
+                VideoPlayer(player: AVPlayer(url: url))
+                    .ignoresSafeArea()
+            }
+        }
+        .alert("Delete latest video?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                videoStore.deleteLatestSessionVideos()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will permanently remove the latest saved exercise video from this device.")
+        }
+        .overlay(alignment: .top) {
+            if showSharedToast {
+                Text("Video sharing updated")
+                    .font(AppFonts.bodyBold)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .frame(height: 52)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(AppColors.success)
+                    )
+                    .padding(.top, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
     }
 
@@ -328,6 +363,109 @@ struct HomeView: View {
         }
     }
 
+    private var myVideoSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("My Session Videos")
+                .font(AppFonts.heading)
+                .foregroundStyle(AppColors.textPrimary)
+
+            if let latest = videoStore.latestVideo {
+                VStack(spacing: 12) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "video.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(AppColors.primary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(latest.exerciseName ?? "Full Session")
+                                .font(AppFonts.bodyBold)
+                                .foregroundStyle(AppColors.textPrimary)
+                            Text(latest.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                .font(AppFonts.caption)
+                                .foregroundStyle(AppColors.textSecondary)
+                        }
+                        Spacer()
+                        Text(latest.sharedWithPT ? "Shared" : "Private")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(latest.sharedWithPT ? AppColors.success : AppColors.textSecondary)
+                    }
+
+                    Button {
+                        showVideoPlayer = true
+                    } label: {
+                        Text("View Latest Video")
+                            .font(AppFonts.button)
+                            .foregroundStyle(AppColors.primary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: AppLayout.buttonHeight)
+                            .background(
+                                RoundedRectangle(cornerRadius: AppLayout.buttonRadius)
+                                    .stroke(AppColors.primary, lineWidth: 2)
+                            )
+                    }
+
+                    HStack(spacing: 10) {
+                        Button {
+                            if latest.sharedWithPT {
+                                videoStore.unshareLatestSessionVideos()
+                            } else {
+                                videoStore.markLatestSessionVideosAsShared()
+                            }
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                showSharedToast = true
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    showSharedToast = false
+                                }
+                            }
+                        } label: {
+                            Text(latest.sharedWithPT ? "Unshare" : "Share with PT")
+                                .font(AppFonts.bodyBold)
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: AppLayout.buttonHeight)
+                                .background(AppColors.success)
+                                .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
+                        }
+
+                        Button {
+                            showDeleteConfirm = true
+                        } label: {
+                            Text("Delete")
+                                .font(AppFonts.bodyBold)
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: AppLayout.buttonHeight)
+                                .background(AppColors.secondary)
+                                .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
+                        }
+                    }
+                }
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: AppLayout.cardRadius)
+                        .fill(AppColors.cardWhite)
+                        .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
+                )
+            } else {
+                VStack(spacing: 10) {
+                    Image(systemName: "video.slash.fill")
+                        .font(.system(size: 30))
+                        .foregroundStyle(AppColors.textSecondary.opacity(0.5))
+                    Text("No recorded videos yet")
+                        .font(AppFonts.body)
+                        .foregroundStyle(AppColors.textSecondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 28)
+                .background(
+                    RoundedRectangle(cornerRadius: AppLayout.cardRadius)
+                        .fill(AppColors.surface)
+                )
+            }
+        }
+    }
+
     private var emptySessionCard: some View {
         VStack(spacing: 12) {
             Image(systemName: "figure.strengthtraining.traditional")
@@ -360,6 +498,12 @@ struct HomeView: View {
             .frame(width: 44)
 
             VStack(alignment: .leading, spacing: 4) {
+                Text(session.exercises.map(\.exerciseName).joined(separator: ", "))
+                    .font(AppFonts.bodyBold)
+                    .foregroundStyle(AppColors.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
                 Text("\(session.exercises.count) exercises · \(session.formattedDuration) min")
                     .font(AppFonts.bodyBold)
                     .foregroundStyle(AppColors.textPrimary)

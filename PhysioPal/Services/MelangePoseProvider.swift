@@ -29,6 +29,7 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
     private var inferenceFailureCount = 0
     private var successfulFrameCount = 0
     private var hasLoggedByteRemap = false
+    private(set) var activeCameraPosition: AVCaptureDevice.Position = .back
 
     private let captureSession = AVCaptureSession()
     private let videoOutput = AVCaptureVideoDataOutput()
@@ -63,6 +64,17 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
             if self.captureSession.isRunning {
                 self.captureSession.stopRunning()
             }
+        }
+    }
+
+    func switchCamera(position: AVCaptureDevice.Position) {
+        guard activeCameraPosition != position else { return }
+        activeCameraPosition = position
+        fallbackProvider.switchCamera(position: position)
+        captureQueue.async { [weak self] in
+            guard let self else { return }
+            guard self.isCaptureConfigured else { return }
+            self.reconfigureCaptureInput()
         }
     }
 
@@ -138,15 +150,10 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
         captureSession.sessionPreset = .high
         defer { captureSession.commitConfiguration() }
 
-        guard
-            let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-            let input = try? AVCaptureDeviceInput(device: camera),
-            captureSession.canAddInput(input)
-        else {
+        guard addInput(for: activeCameraPosition) else {
             print("[MelangePoseProvider] Failed to configure camera input.")
             return
         }
-        captureSession.addInput(input)
 
         videoOutput.alwaysDiscardsLateVideoFrames = true
         videoOutput.videoSettings = [
@@ -160,8 +167,41 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
         captureSession.addOutput(videoOutput)
         if let connection = videoOutput.connection(with: .video) {
             connection.videoRotationAngle = 90
+            if connection.isVideoMirroringSupported {
+                connection.isVideoMirrored = activeCameraPosition == .front
+            }
         }
         isCaptureConfigured = true
+    }
+
+    private func addInput(for position: AVCaptureDevice.Position) -> Bool {
+        guard
+            let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position),
+            let input = try? AVCaptureDeviceInput(device: camera),
+            captureSession.canAddInput(input)
+        else {
+            return false
+        }
+        captureSession.addInput(input)
+        return true
+    }
+
+    private func reconfigureCaptureInput() {
+        captureSession.beginConfiguration()
+        defer { captureSession.commitConfiguration() }
+
+        for input in captureSession.inputs {
+            captureSession.removeInput(input)
+        }
+        guard addInput(for: activeCameraPosition) else {
+            return
+        }
+        if let connection = videoOutput.connection(with: .video) {
+            connection.videoRotationAngle = 90
+            if connection.isVideoMirroringSupported {
+                connection.isVideoMirrored = activeCameraPosition == .front
+            }
+        }
     }
 
     private func runInference(pixelBuffer: CVPixelBuffer) {
@@ -209,7 +249,7 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
                     guard self.isPlausiblePoseFrame(frame) else {
                         self.inferenceFailureCount += 1
                         if self.inferenceFailureCount == 1 {
-                            print("[MelangePoseProvider] Parsed landmarks are implausible on screen; staying on Melange in test mode.")
+                            print("[MelangePoseProvider] Parsed landmarks are implausible on screen.")
                             // #region agent log
                             self.debugLog(
                                 hypothesisId: "H5",
@@ -226,8 +266,12 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
                             )
                             // #endregion
                         }
-                        // In test mode, keep Melange active; Vision should be selected manually.
-                        print("[MelangePoseProvider][DEBUG] keeping Melange active (no auto-fallback).")
+                        if self.inferenceFailureCount >= 20 {
+                            print("[MelangePoseProvider] Implausible Melange frames persisted. Switching to Vision fallback.")
+                            self.activateFallback()
+                        } else {
+                            print("[MelangePoseProvider][DEBUG] implausible Melange frame #\(self.inferenceFailureCount)")
+                        }
                         return
                     }
                     self.inferenceFailureCount = 0
@@ -274,7 +318,10 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
                     self.melangeInferenceDisabled = true
                     print("[MelangePoseProvider] Disabled Melange inference due to input signature mismatch.")
                 }
-                // In test mode, do not auto-fallback. Keep provider stable for manual switching.
+                if self.successfulFrameCount == 0, self.inferenceFailureCount >= 12 {
+                    print("[MelangePoseProvider] Repeated inference errors. Switching to Vision fallback.")
+                    self.activateFallback()
+                }
             }
         }
     }
@@ -600,6 +647,7 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
     private func activateFallback() {
         guard !isFallbackActive, let onFrame else { return }
         isFallbackActive = true
+        fallbackProvider.switchCamera(position: activeCameraPosition)
         // #region agent log
         print("[MelangePoseProvider][H1] activating Vision fallback. melangeSessionRunning=\(captureSession.isRunning)")
         // #endregion
@@ -640,6 +688,7 @@ final class MelangePoseProvider: NSObject, PoseProviderProtocol, AVCaptureVideoD
 
 final class MelangePoseProvider: PoseProviderProtocol {
     private let fallback = VisionPoseProvider()
+    private(set) var activeCameraPosition: AVCaptureDevice.Position = .back
 
     func start(onFrame: @escaping (PoseFrame) -> Void) {
         fallback.start(onFrame: onFrame)
@@ -647,6 +696,11 @@ final class MelangePoseProvider: PoseProviderProtocol {
 
     func stop() {
         fallback.stop()
+    }
+
+    func switchCamera(position: AVCaptureDevice.Position) {
+        activeCameraPosition = position
+        fallback.switchCamera(position: position)
     }
 }
 

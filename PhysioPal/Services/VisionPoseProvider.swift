@@ -5,6 +5,7 @@ import Vision
 
 final class VisionPoseProvider: NSObject, PoseProviderProtocol {
     var previewSession: AVCaptureSession? { captureSession }
+    private(set) var activeCameraPosition: AVCaptureDevice.Position = .back
 
     private let captureSession = AVCaptureSession()
     private let cameraQueue = DispatchQueue(label: "com.physiopal.vision.camera", qos: .userInitiated)
@@ -69,6 +70,16 @@ final class VisionPoseProvider: NSObject, PoseProviderProtocol {
         }
     }
 
+    func switchCamera(position: AVCaptureDevice.Position) {
+        guard activeCameraPosition != position else { return }
+        activeCameraPosition = position
+        cameraQueue.async { [weak self] in
+            guard let self else { return }
+            guard self.isConfigured else { return }
+            self.reconfigureCaptureInput()
+        }
+    }
+
     private func startCaptureSession() {
         cameraQueue.async { [weak self] in
             guard let self else { return }
@@ -88,19 +99,14 @@ final class VisionPoseProvider: NSObject, PoseProviderProtocol {
 
         defer { captureSession.commitConfiguration() }
 
-        guard
-            let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
-            let input = try? AVCaptureDeviceInput(device: camera),
-            captureSession.canAddInput(input)
-        else {
-            print("[VisionPoseProvider] Failed to configure back camera input.")
+        guard addInput(for: activeCameraPosition) else {
+            print("[VisionPoseProvider] Failed to configure camera input.")
             // #region agent log
             print("[VisionPoseProvider][H1] camera input setup failed")
             // #endregion
             startFallbackIfPossible()
             return
         }
-        captureSession.addInput(input)
 
         videoOutput.alwaysDiscardsLateVideoFrames = true
         videoOutput.videoSettings = [
@@ -120,7 +126,7 @@ final class VisionPoseProvider: NSObject, PoseProviderProtocol {
         if let connection = videoOutput.connection(with: .video) {
             connection.videoRotationAngle = 90
             if connection.isVideoMirroringSupported {
-                connection.isVideoMirrored = true
+                connection.isVideoMirrored = activeCameraPosition == .front
             }
         }
         // #region agent log
@@ -128,6 +134,33 @@ final class VisionPoseProvider: NSObject, PoseProviderProtocol {
         // #endregion
 
         isConfigured = true
+    }
+
+    private func addInput(for position: AVCaptureDevice.Position) -> Bool {
+        guard
+            let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position),
+            let input = try? AVCaptureDeviceInput(device: camera),
+            captureSession.canAddInput(input)
+        else {
+            return false
+        }
+        captureSession.addInput(input)
+        return true
+    }
+
+    private func reconfigureCaptureInput() {
+        captureSession.beginConfiguration()
+        defer { captureSession.commitConfiguration() }
+        for input in captureSession.inputs {
+            captureSession.removeInput(input)
+        }
+        guard addInput(for: activeCameraPosition) else { return }
+        if let connection = videoOutput.connection(with: .video) {
+            connection.videoRotationAngle = 90
+            if connection.isVideoMirroringSupported {
+                connection.isVideoMirrored = activeCameraPosition == .front
+            }
+        }
     }
 
     private func makePoseFrame(from observation: VNHumanBodyPoseObservation) -> PoseFrame? {

@@ -5,6 +5,7 @@ struct HealthRecommendationView: View {
     let onStartExercise: (ExerciseRoutine) -> Void
 
     @State private var showContent = false
+    @StateObject private var voicePTVM = VoicePTViewModel()
 
     var body: some View {
         ZStack {
@@ -142,6 +143,8 @@ struct HealthRecommendationView: View {
                     llmUpdatingBanner
                 }
 
+                voiceConversationCard
+
                 DoctorsNoteCard(readiness: readiness, routine: routine)
 
                 if let sleep = readiness.sleepHours {
@@ -207,6 +210,80 @@ struct HealthRecommendationView: View {
                 .foregroundStyle(AppColors.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var voiceConversationCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Image(systemName: "waveform.circle.fill")
+                    .font(.system(size: 30))
+                    .foregroundStyle(AppColors.primary)
+                Text("Talk to your digital PT")
+                    .font(AppFonts.bodyBold)
+                    .foregroundStyle(AppColors.textPrimary)
+                Spacer()
+            }
+
+            Text(voicePTVM.responseText)
+                .font(AppFonts.body)
+                .foregroundStyle(AppColors.textPrimary)
+                .lineSpacing(6)
+
+            if !voicePTVM.transcript.isEmpty {
+                Text("You said: \"\(voicePTVM.transcript)\"")
+                    .font(AppFonts.caption)
+                    .foregroundStyle(AppColors.textSecondary)
+                    .lineSpacing(4)
+            }
+
+            Button {
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.impactOccurred()
+                voicePTVM.toggleListening()
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: voicePTVM.isListening ? "stop.circle.fill" : "mic.circle.fill")
+                        .font(.system(size: 26))
+                    Text(voicePTVM.isListening ? "Stop Listening" : "Describe My Pain")
+                        .font(AppFonts.button)
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: AppLayout.buttonHeight)
+                .background(voicePTVM.isListening ? AppColors.secondary : AppColors.primary)
+                .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
+            }
+
+            if let exerciseID = voicePTVM.suggestedExerciseID,
+               let exercise = Exercise.find(byID: exerciseID) {
+                Button {
+                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    generator.impactOccurred()
+                    if let customRoutine = viewModel.buildSingleExerciseRoutine(exerciseID: exerciseID) {
+                        onStartExercise(customRoutine)
+                    }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: exercise.iconName)
+                            .font(.system(size: 24))
+                        Text("Begin \(exercise.name)")
+                            .font(AppFonts.button)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: AppLayout.buttonHeight)
+                    .background(AppColors.success)
+                    .clipShape(RoundedRectangle(cornerRadius: AppLayout.buttonRadius))
+                }
+                .accessibilityLabel("Begin recommended exercise")
+            }
+        }
+        .padding(AppLayout.cardPadding)
+        .background(
+            RoundedRectangle(cornerRadius: AppLayout.cardRadius)
+                .fill(AppColors.cardWhite)
+                .shadow(color: AppShadow.color, radius: AppShadow.radius, x: AppShadow.x, y: AppShadow.y)
+        )
     }
 
     private func healthStatRow(icon: String, label: String, value: String, color: Color) -> some View {

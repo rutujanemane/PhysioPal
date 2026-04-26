@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
    LastUpgradeVersion = "2640"
-   version = "1.8">
+   version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES"
@@ -55,11 +55,6 @@
          <EnvironmentVariable
             key = "MELANGE_PERSONAL_KEY"
             value = "ztp_47d5c7b452dc45c38d1f4aed7064aa90"
-            isEnabled = "YES">
-         </EnvironmentVariable>
-         <EnvironmentVariable
-            key = ""
-            value = ""
             isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>
